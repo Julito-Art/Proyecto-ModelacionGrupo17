@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Estado** | Aceptado |
-| **Fecha** | 24/10/2026 |
+| **Fecha** | 24/10/2026 (revisado el 04/11/2026) |
 | **Documentos relacionados** | [04 – RNF y arquitectura](../04-rnf-y-arquitectura.md), [ADR-001](ADR-001-proveedor-de-respaldo-acronis.md) |
 
 ## Contexto
@@ -44,7 +44,7 @@ Una sola aplicación en capas, donde los servicios llaman directamente a la API 
 
 ## Decisión
 
-Se adopta un **monolito modular en capas (Presentación, Aplicación, Infraestructura) con puertos y adaptadores** para Acronis Cloud (`IProveedorNube` / `AcronisCloudAdapter`) y para el correo (`INotificador` / `NotificadorPorCorreo`). Se despliega como una sola unidad, con una base de datos SQL propia. Los usuarios acceden mediante una interfaz web.
+Se adopta un **monolito modular en capas (Presentación, Aplicación, Infraestructura) con puertos y adaptadores** para Acronis Cloud (`IProveedorNube` / `AcronisCloudAdapter`) y para el correo (`INotificador` / `NotificadorPorCorreo`). Se despliega como **un único artefacto (`sgr`)**, que contiene la interfaz web y todos los módulos de aplicación en un mismo proceso, con una base de datos SQL propia (`sgr-db`). La interfaz web no es un artefacto separado: se instala, se actualiza y se reinicia junto con la aplicación (ver el diagrama de despliegue del documento 04). Los usuarios acceden mediante una interfaz web.
 
 Es la opción más simple que cumple RNF-03 y RE-05 sin renunciar a aislar lo que más probablemente cambie: el proveedor externo (RNF-02).
 
