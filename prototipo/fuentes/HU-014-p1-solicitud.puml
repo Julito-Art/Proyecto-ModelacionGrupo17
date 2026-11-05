@@ -7,14 +7,23 @@ Servidor | ^TANGO^
 ..
 <b>Punto de restauración <i>(solo vigentes, según la retención de la política: 30 días) (1)
 Desde | "19/10/2026" | Hasta | "26/10/2026" | [X] Solo diarios
+( ) 25/10/2026 23:00 · diferencial (hace 1 día)
 (X) 24/10/2026 23:00 · diferencial (hace 2 días)
-( ) 27/09/2026 23:00 · incremental (hace 29 días)
+( ) 23/10/2026 23:00 · diferencial (hace 3 días)
+( ) 22/10/2026 23:00 · diferencial (hace 4 días)
+( ) 21/10/2026 23:00 · diferencial (hace 5 días)
+( ) 20/10/2026 23:00 · diferencial (hace 6 días)
+( ) 19/10/2026 23:00 · diferencial (hace 7 días)
 <i>Página 1 de 1 · 20 puntos por página, del más reciente al más antiguo | [ < ] | [ > ]
 ..
 <b>Tipo de restauración
 (X) Total | ( ) Granular
 Elementos a restaurar (4) | "                              "
-Motivo | "                              "
+Motivo | "Pérdida de datos por ataque   "
+..
+<b>Resumen antes de enviar (1)
+<i>Vas a pedir restaurar TANGO completo al 24/10/2026 23:00 (diferencial).
+<i>La solicitud queda PENDIENTE hasta que Dirección la autorice.
 ..
 [ Enviar solicitud ] | [ Cancelar ]
 }

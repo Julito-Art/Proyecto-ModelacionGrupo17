@@ -6,8 +6,10 @@ scale 1.8
 Servidor | ^TANGO^
 ..
 <b>Punto de restauración
+Desde | "19/10/2026" | Hasta | "26/10/2026" | [X] Solo diarios
+( ) 25/10/2026 23:00 · diferencial (hace 1 día)
 (X) 24/10/2026 23:00 · diferencial (hace 2 días)
-( ) 27/09/2026 23:00 · incremental (hace 29 días)
+<i>Página 1 de 1
 ..
 <b>Tipo de restauración
 ( ) Total | (X) Granular

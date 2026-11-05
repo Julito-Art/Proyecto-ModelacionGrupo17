@@ -7,8 +7,10 @@ scale 1.8
 <color:red>La alerta sigue ABIERTA y se muestra aquí.
 ..
 {#
-<b>Severidad | <b>Tipo | <b>Servidor | <b>Desde | <b>Estado
-<color:red><b>CRITICA | Falla | TANGO | 14:07 | ABIERTA
+<b>Severidad | <b>Tipo | <b>Servidor | <b>Desde | <b>Estado | <b>Motivo
+<color:red><b>CRITICA | Falla | TANGO | 14:07 | ABIERTA | Acronis no respondió: tiempo de espera agotado
 }
+..
+[ Actualizar ]
 }
 @endsalt
