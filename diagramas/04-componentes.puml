@@ -6,13 +6,13 @@ skinparam componentStyle uml2
 skinparam nodesep 40
 skinparam ranksep 55
 
-package "SGR (una sola unidad desplegable)" {
+package "SGR (artefacto único sgr: una sola unidad desplegable)" {
   package "Presentación" {
     [Interfaz Web] as UI
   }
   package "Aplicación" {
+    [Reloj del Sistema] as CLK
     [Servicio de Acceso] as ACC
-    [Servicio de Políticas] as POL
     [Planificador] as PLA
     [Servicio de Respaldo] as RESP
     [Gestor de Agentes] as AGE
@@ -24,6 +24,7 @@ package "SGR (una sola unidad desplegable)" {
   package "Puertos (interfaces)" {
     interface "IProveedorNube" as IPN <<puerto>>
     interface "INotificador" as INO <<puerto>>
+    interface "IRepositorioDe…" as IRE <<puerto>>
   }
   package "Infraestructura" {
     [Adaptador Acronis] as ADA
@@ -31,12 +32,12 @@ package "SGR (una sola unidad desplegable)" {
     [Repositorios] as REP
   }
 }
-database "BD del SGR\n(SQL)" as DB
+database "sgr-db\n(BD SQL)" as DB
 cloud "Acronis Cloud" as ACR
 cloud "Servicio de correo" as MAIL
 
 UI -down-> ACC
-UI -down-> POL
+UI -down-> PLA : políticas y\nrespaldo manual
 UI -down-> RESP
 UI -down-> REST
 UI -down-> ALE
@@ -44,34 +45,53 @@ UI -down-> AUD
 UI -down-> INF
 UI -down-> AGE
 
-PLA -down-> POL
+CLK -down-> PLA : cada minuto
+PLA -down-> AGE : obtiene el agente
 PLA -down-> RESP
-PLA -down-> ALE : detecta atrasos
-INF -down-> RESP
-RESP -down-> AGE
+PLA -down-> ALE : alertas y atrasos
+PLA -down-> AUD : registra
+REST -down-> PLA : respaldo previo
 REST -down-> AGE
-RESP -down-> ALE
-REST -down-> ALE
+REST -down-> ALE : restauración fallida
+REST -down-> AUD : registra
+REST -down-> IPN : simulacros
+REST -down-> INO : aviso de resolución
+RESP -down-> AGE
+RESP -down-> IPN : estrategias
+RESP -down-> AUD : registra
+ALE -down-> AUD : registra
+ACC -down-> AUD : registra
+INF -down-> RESP
+INF -down-> REST
 
 AGE -down-> IPN : usa
 ALE -down-> INO : usa
+
+PLA -down-> IRE
+RESP -down-> IRE
+REST -down-> IRE
+ALE -down-> IRE
+AUD -down-> IRE
+ACC -down-> IRE
+INF -down-> IRE
+
 ADA -up-|> IPN
 NOT -up-|> INO
+REP -up-|> IRE
+NOT -down-> IRE : correos por rol
 
 ADA -down-> ACR : HTTPS (TLS 1.2+)
 NOT -down-> MAIL : SMTP sobre TLS
 REP -down-> DB : SQL
 
-ACC ..> AUD : registra
-POL ..> AUD : registra
-RESP ..> AUD : registra
-REST ..> AUD : registra
-
 note right of ADA
   Única pieza que conoce la API
   de Acronis (patrón Adapter).
-  Todos los servicios de la capa
-  de aplicación acceden a los datos
-  mediante los Repositorios.
+end note
+note right of REP
+  Implementa los ocho puertos
+  IRepositorioDe… (políticas, tareas,
+  puntos, usuarios, alertas,
+  auditoría, solicitudes, simulacros).
 end note
 @enduml

@@ -16,10 +16,11 @@ hide empty members
 class GestorDeAlertas {
   - notificador: INotificador
   - auditoria: ServicioDeAuditoria
-  - abiertas: List<Alerta>
-  + GestorDeAlertas(notificador: INotificador, auditoria: ServicioDeAuditoria)
+  - repoAlertas: IRepositorioDeAlertas
+  + GestorDeAlertas(notificador: INotificador, auditoria: ServicioDeAuditoria, repoAlertas: IRepositorioDeAlertas)
   + alertarFalla(tarea: TareaDeRespaldo, ahora: DateTime): Alerta
-  + evaluarAtraso(servidor: ServidorOrigen, ultimoExitoso: DateTime, ahora: DateTime): Alerta [0..1]
+  + alertarFallaRestauracion(solicitud: SolicitudDeRestauracion, motivo: String, ahora: DateTime): Alerta
+  + evaluarAtraso(servidor: ServidorOrigen, ultimoExitoso: DateTime [0..1], ahora: DateTime): Alerta [0..1]
   + cerrarAlertas(servidor: ServidorOrigen, ahora: DateTime): void
   + alertasAbiertas(): List<Alerta>
 }
@@ -31,39 +32,61 @@ class Alerta {
   - servidor: ServidorOrigen
   - mensaje: String
   - tareaOrigen: TareaDeRespaldo [0..1]
+  - solicitudOrigen: SolicitudDeRestauracion [0..1]
   - creada: DateTime
+  - actualizada: DateTime
   - cerrada: DateTime [0..1]
   - correoEnviado: boolean
   - motivoFalloCorreo: String [0..1]
-  + Alerta(tipo: TipoDeAlerta, severidad: Severidad, servidor: ServidorOrigen, mensaje: String, tareaOrigen: TareaDeRespaldo, ahora: DateTime)
-  + elevarSeveridad(nueva: Severidad): void
+  + Alerta(tipo: TipoDeAlerta, severidad: Severidad, servidor: ServidorOrigen, mensaje: String, tareaOrigen: TareaDeRespaldo [0..1], solicitudOrigen: SolicitudDeRestauracion [0..1], ahora: DateTime)
+  + actualizar(mensaje: String, ahora: DateTime): void
+  + elevarSeveridad(nueva: Severidad, ahora: DateTime): void
   + cerrar(ahora: DateTime): void
   + marcarCorreoEnviado(): void
   + marcarCorreoFallido(motivo: String): void
   + correoEnviado(): boolean
+  + motivoFalloCorreo(): String [0..1]
   + destinatarios(): List<Rol>
   + estado(): EstadoAlerta
   + tipo(): TipoDeAlerta
+  + severidad(): Severidad
   + servidor(): ServidorOrigen
+  + mensaje(): String
+}
+interface IRepositorioDeAlertas {
+  + guardar(alerta: Alerta): void
+  + abierta(servidor: ServidorOrigen, tipo: TipoDeAlerta): Alerta [0..1]
+  + abiertas(): List<Alerta>
 }
 interface INotificador {
   + notificar(alerta: Alerta, roles: List<Rol>): void <<throws NotificacionException>>
+  + notificarResolucion(solicitud: SolicitudDeRestauracion): void <<throws NotificacionException>>
 }
 class NotificadorPorCorreo {
   - servidorSmtp: String
   - remitente: String
+  - repoUsuarios: IRepositorioDeUsuarios
   + notificar(alerta: Alerta, roles: List<Rol>): void <<throws NotificacionException>>
+  + notificarResolucion(solicitud: SolicitudDeRestauracion): void <<throws NotificacionException>>
 }
 interface IRepositorioDeUsuarios {
   + usuariosActivosConRol(rol: Rol): List<Usuario>
+  + buscarPorNombre(nombre: String): Usuario [0..1]
+  + guardar(usuario: Usuario): void
 }
 class NotificacionException <<exception>> {
   - motivo: String
   + motivo(): String
 }
 class ServicioDeAuditoria {
+  + {static} RETENCION_MESES: int = 12
+  - repoAuditoria: IRepositorioDeAuditoria
   + registrar(usuario: Usuario, accion: AccionAuditada, objetivo: String, resultado: String, ahora: DateTime): RegistroDeAuditoria
-  + consultar(usuario: String, accion: AccionAuditada, servidor: ServidorOrigen, desde: DateTime, hasta: DateTime): List<RegistroDeAuditoria>
+  + consultar(usuario: String [0..1], accion: AccionAuditada [0..1], servidor: ServidorOrigen [0..1], desde: DateTime, hasta: DateTime): List<RegistroDeAuditoria>
+}
+interface IRepositorioDeAuditoria {
+  + agregar(registro: RegistroDeAuditoria): void
+  + consultar(usuario: String [0..1], accion: AccionAuditada [0..1], objetivo: String [0..1], desde: DateTime, hasta: DateTime): List<RegistroDeAuditoria>
 }
 class RegistroDeAuditoria <<inmutable>> {
   - id: long
@@ -72,8 +95,10 @@ class RegistroDeAuditoria <<inmutable>> {
   - objetivo: String
   - resultado: String
   - fechaHora: DateTime
+  + RegistroDeAuditoria(usuario: String, accion: AccionAuditada, objetivo: String, resultado: String, fechaHora: DateTime)
 }
 class TareaDeRespaldo
+class SolicitudDeRestauracion
 class Usuario
 class PlanificadorDeRespaldos <<Singleton>>
 class ServicioDeRestauracion
@@ -85,11 +110,28 @@ GestorDeAlertas ..> NotificacionException : captura y marca el correo como falli
 PlanificadorDeRespaldos "1" --> "1" GestorDeAlertas : usa
 PlanificadorDeRespaldos "1" --> "1" ServicioDeAuditoria : usa
 Alerta "*" --> "0..1" TareaDeRespaldo : origen
+Alerta "*" --> "0..1" SolicitudDeRestauracion : origen
 GestorDeAlertas "1" --> "1" INotificador : notifica con
-GestorDeAlertas "1" o-- "*" Alerta : abiertas
-ServicioDeAuditoria "1" --> "*" RegistroDeAuditoria : registra
+GestorDeAlertas "1" --> "1" IRepositorioDeAlertas : guarda alertas en
+GestorDeAlertas "1" --> "1" ServicioDeAuditoria : registra en
+GestorDeAlertas "1" --> "*" Alerta : gestiona
+ServicioDeAuditoria "1" --> "1" IRepositorioDeAuditoria : guarda en
+ServicioDeAuditoria ..> RegistroDeAuditoria : crea
+IRepositorioDeAuditoria ..> RegistroDeAuditoria : guarda (solo agregar)
 PlanificadorDeRespaldos ..> TareaDeRespaldo : crea
-GestorDeAlertas ..> ServicioDeAuditoria
+ServicioDeRestauracion "1" --> "1" GestorDeAlertas : restauración fallida
+ServicioDeRestauracion "1" --> "1" INotificador : aviso de resolución
+ServicioDeRestauracion "1" --> "1" ServicioDeAuditoria : registra en
 ServicioDeRestauracion ..> PlanificadorDeRespaldos : respaldo previo
-ServicioDeRestauracion ..> ServicioDeAuditoria
+note bottom of IRepositorioDeAuditoria
+  Solo agrega registros: no tiene operaciones de
+  modificar ni borrar (RN-13). Índices por fecha,
+  usuario y acción para consultar 12 meses
+  en ≤ 3 s (RNF-06).
+end note
+note right of GestorDeAlertas
+  alertarFalla busca primero la alerta ABIERTA
+  del servidor y tipo (RN-08): si existe la
+  actualiza; si no, crea una nueva.
+end note
 @enduml

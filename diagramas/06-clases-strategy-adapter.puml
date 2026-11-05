@@ -15,7 +15,7 @@ skinparam class {
 hide empty members
 interface IEstrategiaDeRespaldo <<Strategy>> {
   + tipo(): TipoDeRespaldo
-  + ejecutar(servidor: ServidorOrigen, proveedor: IProveedorNube, agente: AgenteDeRespaldo): ResultadoDeRespaldo
+  + ejecutar(servidor: ServidorOrigen, proveedor: IProveedorNube, agente: AgenteDeRespaldo): ResultadoDeRespaldo <<throws SinConexionException>>
 }
 class RespaldoCompleto <<Strategy>>
 class RespaldoIncremental <<Strategy>>
@@ -32,9 +32,9 @@ class ResultadoDeRespaldo {
 interface IProveedorNube <<Adapter>> {
   + configurar(urlCuenta: String, credencial: String): void
   + probarConexion(): boolean
-  + ejecutarRespaldo(servidor: ServidorOrigen, tipo: TipoDeRespaldo, idPuntoBase: String): ResultadoDeRespaldo
-  + validarRespaldo(idRespaldoNube: String): boolean
-  + restaurar(idRespaldoNube: String, servidor: ServidorOrigen, tipo: TipoDeRestauracion, elementos: List<String>, destino: String): boolean
+  + ejecutarRespaldo(servidor: ServidorOrigen, tipo: TipoDeRespaldo, idPuntoBase: String [0..1]): ResultadoDeRespaldo <<throws SinConexionException>>
+  + validarRespaldo(idRespaldoNube: String): ResultadoDeRespaldo <<throws SinConexionException>>
+  + restaurar(idRespaldoNube: String, servidor: ServidorOrigen, tipo: TipoDeRestauracion, elementos: List<String>, destino: String): ResultadoDeRespaldo <<throws SinConexionException>>
 }
 class AcronisCloudAdapter <<Adapter>> {
   + {static} TIEMPO_ESPERA_LLAMADA_SEG: int = 30
@@ -44,9 +44,9 @@ class AcronisCloudAdapter <<Adapter>> {
   - api: ApiAcronis
   + configurar(urlCuenta: String, credencial: String): void
   + probarConexion(): boolean
-  + ejecutarRespaldo(servidor: ServidorOrigen, tipo: TipoDeRespaldo, idPuntoBase: String): ResultadoDeRespaldo
-  + validarRespaldo(idRespaldoNube: String): boolean
-  + restaurar(idRespaldoNube: String, servidor: ServidorOrigen, tipo: TipoDeRestauracion, elementos: List<String>, destino: String): boolean
+  + ejecutarRespaldo(servidor: ServidorOrigen, tipo: TipoDeRespaldo, idPuntoBase: String [0..1]): ResultadoDeRespaldo <<throws SinConexionException>>
+  + validarRespaldo(idRespaldoNube: String): ResultadoDeRespaldo <<throws SinConexionException>>
+  + restaurar(idRespaldoNube: String, servidor: ServidorOrigen, tipo: TipoDeRestauracion, elementos: List<String>, destino: String): ResultadoDeRespaldo <<throws SinConexionException>>
   - nombreDeMaquina(servidor: ServidorOrigen): String
   - metodoDe(tipo: TipoDeRespaldo): String
 }
@@ -58,6 +58,7 @@ class ApiAcronis <<externo>> {
 }
 class SinConexionException <<exception>>
 class AgenteDeRespaldo <<Multiton>>
+class ServicioDeRestauracion
 IEstrategiaDeRespaldo <|.. RespaldoCompleto
 IEstrategiaDeRespaldo <|.. RespaldoIncremental
 IEstrategiaDeRespaldo <|.. RespaldoDiferencial
@@ -65,13 +66,22 @@ IProveedorNube <|.. AcronisCloudAdapter
 AgenteDeRespaldo "1" --> "1" IProveedorNube : proveedor
 AgenteDeRespaldo "1" o-- "3" IEstrategiaDeRespaldo : estrategias
 AcronisCloudAdapter "1" --> "1" ApiAcronis : adapta
+ServicioDeRestauracion "1" --> "1" IProveedorNube : simulacros
 IEstrategiaDeRespaldo ..> IProveedorNube : usa
+IEstrategiaDeRespaldo ..> SinConexionException : <<throws>>
 IEstrategiaDeRespaldo ..> ResultadoDeRespaldo : devuelve
 IProveedorNube ..> ResultadoDeRespaldo : devuelve
 IProveedorNube ..> SinConexionException : <<throws>>
 note right of ApiAcronis
   Adaptee externo: sus operaciones son un supuesto
   de modelado (no figuran en el trabajo de OAS).
+end note
+note right of ResultadoDeRespaldo
+  Lo devuelven el respaldo, la validación
+  (exitoso = «íntegro») y la restauración.
+  Si se agota un tiempo de espera (RN-23):
+  exitoso = falso, motivo = «Acronis no
+  respondió: tiempo de espera agotado».
 end note
 note bottom of AgenteDeRespaldo
   Context del Strategy: elige la estrategia

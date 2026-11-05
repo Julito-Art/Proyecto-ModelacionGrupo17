@@ -23,12 +23,14 @@ class SolicitudDeRestauracion {
   - solicitante: Usuario
   - resolutor: Usuario [0..1]
   - motivoRechazo: String [0..1]
+  - motivoFallo: String [0..1]
   - fechaSolicitud: DateTime
   + {static} MOTIVO_MIN: int = 10
   + {static} MOTIVO_MAX: int = 300
   + {static} ELEMENTOS_MAX: int = 20
   + {static} ELEMENTO_LARGO_MAX: int = 100
-  + {static} validar(tipo: TipoDeRestauracion, elementos: List<String>, motivo: String): List<String>
+  + {static} validar(punto: PuntoDeRestauracion [0..1], tipo: TipoDeRestauracion, elementos: String, motivo: String, ahora: DateTime): List<String>
+  + {static} separarElementos(texto: String): List<String>
   + SolicitudDeRestauracion(punto: PuntoDeRestauracion, tipo: TipoDeRestauracion, elementos: List<String>, motivo: String, solicitante: Usuario, ahora: DateTime)
   + autorizar(resolutor: Usuario): void
   + rechazar(resolutor: Usuario, motivo: String): void
@@ -36,17 +38,51 @@ class SolicitudDeRestauracion {
   + completar(): void
   + fallar(motivo: String): void
   + estado(): EstadoDeSolicitud
+  + servidor(): ServidorOrigen
+  + solicitante(): Usuario
 }
 class ServicioDeRestauracion {
   + {static} TAMANO_PAGINA: int = 20
   + {static} DIAS_RANGO_POR_DEFECTO: int = 7
-  + puntosVigentes(servidor: ServidorOrigen, desde: DateTime, hasta: DateTime, soloDiarios: boolean, pagina: int, ahora: DateTime): List<PuntoDeRestauracion>
+  + {static} DIAS_ENTRE_SIMULACROS: int = 90
+  - repoPuntos: IRepositorioDePuntos
+  - repoSolicitudes: IRepositorioDeSolicitudes
+  - repoSimulacros: IRepositorioDeSimulacros
+  - proveedor: IProveedorNube
+  - gestorDeAlertas: GestorDeAlertas
+  - notificador: INotificador
+  - auditoria: ServicioDeAuditoria
+  + puntosVigentes(servidor: ServidorOrigen, desde: DateTime, hasta: DateTime, soloDiarios: boolean, pagina: int, ahora: DateTime): List<PuntoDeRestauracion> <<throws ValidacionException>>
   + contarPuntosVigentes(servidor: ServidorOrigen, desde: DateTime, hasta: DateTime, soloDiarios: boolean, ahora: DateTime): int
-  + solicitar(punto: PuntoDeRestauracion, tipo: TipoDeRestauracion, elementos: List<String>, motivo: String, solicitante: Usuario, ahora: DateTime): SolicitudDeRestauracion
+  + hayPendiente(servidor: ServidorOrigen): boolean
+  + solicitar(punto: PuntoDeRestauracion [0..1], tipo: TipoDeRestauracion, elementos: String, motivo: String, solicitante: Usuario, ahora: DateTime): SolicitudDeRestauracion <<throws ValidacionException, PermisoDenegadoException>>
   + autorizar(solicitud: SolicitudDeRestauracion, resolutor: Usuario): void
   + rechazar(solicitud: SolicitudDeRestauracion, resolutor: Usuario, motivo: String): void
   + ejecutar(solicitud: SolicitudDeRestauracion, usuario: Usuario, ahora: DateTime): void
-  + simulacro(punto: PuntoDeRestauracion, destinoAlternativo: String, usuario: Usuario, ahora: DateTime): int
+  + simulacro(punto: PuntoDeRestauracion, destinoAlternativo: String, usuario: Usuario, ahora: DateTime): ResultadoDeSimulacro
+  + simulacroVencido(servidor: ServidorOrigen, ahora: DateTime): boolean
+}
+class ResultadoDeSimulacro {
+  + {static} RTO_MINUTOS: int = 240
+  - id: long
+  - punto: PuntoDeRestauracion
+  - destino: String
+  - inicio: DateTime
+  - fin: DateTime
+  - exitoso: boolean
+  - motivo: String [0..1]
+  + duracionMinutos(): int
+  + cumpleRto(): boolean
+}
+interface IRepositorioDeSolicitudes {
+  + guardar(solicitud: SolicitudDeRestauracion): void
+  + pendienteDe(servidor: ServidorOrigen): SolicitudDeRestauracion [0..1]
+  + pendientes(): List<SolicitudDeRestauracion>
+  + delMes(anio: int, mes: int): List<SolicitudDeRestauracion>
+}
+interface IRepositorioDeSimulacros {
+  + guardar(resultado: ResultadoDeSimulacro): void
+  + ultimo(servidor: ServidorOrigen): ResultadoDeSimulacro [0..1]
 }
 class Usuario {
   + {static} MAX_INTENTOS: int = 5
@@ -70,11 +106,14 @@ class Usuario {
   + validarContrasena(contrasena: String): boolean
   + esDeSistema(): boolean
   + nombre(): String
+  + correo(): String
 }
 note right of Usuario
   SGR es el usuario de sistema (sin rol ni contraseña,
   no puede iniciar sesión): firma en la auditoría
   las acciones automáticas del propio SGR.
+  El primer usuario (rol DIRECCION) se crea en la
+  carga inicial de la instalación (tarea técnica T-02).
 end note
 class InformeMensual {
   - anio: int
@@ -91,6 +130,12 @@ class TareaDeRespaldo
 class PlanificadorDeRespaldos <<Singleton>>
 class AgenteDeRespaldo <<Multiton>>
 class ServicioDeAuditoria
+class GestorDeAlertas
+interface INotificador
+interface IProveedorNube <<Adapter>>
+interface IRepositorioDePuntos
+class ValidacionException <<exception>>
+class PermisoDenegadoException <<exception>>
 PlanificadorDeRespaldos "1" --> "1" ServicioDeAuditoria : usa
 AgenteDeRespaldo "1" --> "0..1" TareaDeRespaldo : en curso
 TareaDeRespaldo "1" --> "0..1" PuntoDeRestauracion : genera
@@ -99,11 +144,20 @@ SolicitudDeRestauracion "*" --> "1" PuntoDeRestauracion : sobre
 SolicitudDeRestauracion "*" --> "1" Usuario : solicitante
 SolicitudDeRestauracion "*" --> "0..1" Usuario : resolutor
 ServicioDeRestauracion "1" --> "*" SolicitudDeRestauracion : gestiona
+ServicioDeRestauracion "1" --> "1" IRepositorioDePuntos : lee puntos de
+ServicioDeRestauracion "1" --> "1" IRepositorioDeSolicitudes : guarda solicitudes en
+ServicioDeRestauracion "1" --> "1" IRepositorioDeSimulacros : guarda simulacros en
+ServicioDeRestauracion "1" --> "1" IProveedorNube : simulacros
+ServicioDeRestauracion "1" --> "1" GestorDeAlertas : restauración fallida
+ServicioDeRestauracion "1" --> "1" INotificador : aviso de resolución
+ServicioDeRestauracion "1" --> "1" ServicioDeAuditoria : registra en
+ResultadoDeSimulacro "*" --> "1" PuntoDeRestauracion : sobre
 PlanificadorDeRespaldos ..> AgenteDeRespaldo : obtiene (Multiton)
 PlanificadorDeRespaldos ..> TareaDeRespaldo : crea
 ServicioDeRestauracion ..> PlanificadorDeRespaldos : respaldo previo
 ServicioDeRestauracion ..> AgenteDeRespaldo : restaurar
-ServicioDeRestauracion ..> ServicioDeAuditoria
+ServicioDeRestauracion ..> ValidacionException : <<throws>>
+ServicioDeRestauracion ..> PermisoDenegadoException : <<throws>>
 InformeMensual ..> TareaDeRespaldo
 InformeMensual ..> SolicitudDeRestauracion
 @enduml

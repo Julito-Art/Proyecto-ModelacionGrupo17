@@ -1,21 +1,9 @@
 @startuml 07-secuencia-hu004
-title HU-004 – Ejecutar respaldos automáticos (flujo principal, ciclo omitido y sin conexión)
+title HU-004 – Ejecutar respaldos automáticos (control del intervalo, ciclo omitido, flujo principal y sin conexión)
 skinparam shadowing false
 skinparam defaultFontName Arial
 skinparam sequenceMessageAlign center
-' @clase PLC PlanificadorDeRespaldos
-' @clase PLA PlanificadorDeRespaldos
-' @clase AGC AgenteDeRespaldo
-' @clase AGE AgenteDeRespaldo
-' @clase POL PoliticaDeRespaldo
-' @clase TAR TareaDeRespaldo
-' @clase EST RespaldoIncremental
-' @clase ADA AcronisCloudAdapter
-' @clase API ApiAcronis
-' @clase AUD ServicioDeAuditoria
-' @clase ALE GestorDeAlertas
-' @clase PUN PuntoDeRestauracion
-actor "Reloj del sistema" as CLK
+participant ":RelojDelSistema" as CLK
 participant "PlanificadorDeRespaldos\n(clase)" as PLC
 participant ":PlanificadorDeRespaldos" as PLA
 participant "AgenteDeRespaldo\n(clase)" as AGC
@@ -25,66 +13,85 @@ participant ":TareaDeRespaldo" as TAR
 participant ":RespaldoIncremental" as EST
 participant ":AcronisCloudAdapter" as ADA
 participant ":ApiAcronis" as API
-participant ":ServicioDeAuditoria" as AUD
-participant ":GestorDeAlertas" as ALE
+participant ":IRepositorioDeTareas" as RPT
+participant ":IRepositorioDePuntos" as RPP
 participant ":PuntoDeRestauracion" as PUN
+participant ":GestorDeAlertas" as ALE
+participant ":ServicioDeAuditoria" as AUD
 
 CLK -> PLC : obtenerInstancia()
 PLC --> CLK : planificador (única instancia)
 CLK -> PLA : ejecutarCiclo(STRUMIS, ahora)
-PLA -> AGC : obtenerInstancia(STRUMIS)
-AGC --> PLA : agente (una instancia por servidor)
-PLA -> AGE : hayRespaldoEnCurso()
-AGE --> PLA : enCurso
-alt enCurso = true (RN-05: ciclo omitido)
-  PLA -> AUD : registrar(SGR, CICLO_OMITIDO, "STRUMIS", "omitido", ahora)
+PLA -> PLA : obtenerPolitica(STRUMIS)
+alt el servidor no tiene política («Sin protección»)
   PLA --> CLK : null
-else no hay respaldo en curso
-  PLA -> POL : tipoParaCiclo(agente, ahora)
-  POL --> PLA : INCREMENTAL
-  PLA -> PLA : lanzar(STRUMIS, INCREMENTAL, PROGRAMADO, null, ahora)
-  PLA -> TAR : TareaDeRespaldo(STRUMIS, INCREMENTAL, PROGRAMADO, null, ahora)
-  note right of TAR : estado = PROGRAMADA
-  PLA -> AUD : registrar(SGR, RESPALDO_INICIADO, "STRUMIS", "iniciado", ahora)
-  PLA -> AGE : ejecutarRespaldo(tarea)
-  AGE -> TAR : iniciar(ahora)
-  note right of TAR : estado = EN_EJECUCION
-  AGE -> EST : ejecutar(STRUMIS, proveedor, agente)
-  EST -> AGE : puntoBaseUltimo()
-  AGE --> EST : idPuntoBase
-  EST -> ADA : ejecutarRespaldo(STRUMIS, INCREMENTAL, idPuntoBase)
-  alt hay conexión a Internet
-    ADA -> API : crearRespaldo("STRUMIS", "incremental", idPuntoBase)
-    API --> ADA : idRespaldoNube
-    ADA --> EST : resultado (exitoso)
-    EST --> AGE : resultado
-    AGE -> TAR : marcarVerificando(idRespaldoNube)
-    note right of TAR : estado = VERIFICANDO
-    AGE -> ADA : validarRespaldo(idRespaldoNube)
-    ADA -> API : consultarValidacion(idRespaldoNube)
-    API --> ADA : "íntegro"
-    ADA --> AGE : true
-    AGE -> TAR : completar(ahora)
-    note right of TAR : estado = COMPLETADA
-    AGE -> AGE : registrarExito(tarea)
-  else sin conexión a Internet (RN-17, camino alternativo)
-    ADA --> EST : SinConexionException
-    EST --> AGE : SinConexionException
-    AGE -> TAR : marcarEnCola()
-    note right of TAR : estado = EN_COLA (sin consumir reintentos)
+else hay política
+  PLA -> AGC : obtenerInstancia(STRUMIS)
+  AGC --> PLA : agente (una instancia por servidor)
+  PLA -> AGE : inicioUltimoCiclo()
+  AGE --> PLA : inicioUltimoCiclo
+  PLA -> POL : proximaEjecucion(inicioUltimoCiclo, ahora)
+  POL --> PLA : proxima
+  alt ahora < proxima (todavía no corresponde respaldar)
+    PLA --> CLK : null
+  else corresponde un ciclo
+    PLA -> AGE : registrarInicioDeCiclo(ahora)
+    PLA -> AGE : hayRespaldoEnCurso()
+    AGE --> PLA : enCurso
+    alt enCurso = true (RN-05: ciclo omitido)
+      PLA -> AUD : registrar(SGR, CICLO_OMITIDO, "STRUMIS", "omitido", ahora)
+      PLA --> CLK : null
+    else no hay respaldo en curso
+      PLA -> POL : tipoParaCiclo(agente, ahora)
+      POL --> PLA : INCREMENTAL
+      PLA -> PLA : lanzar(STRUMIS, INCREMENTAL, PROGRAMADO, null, ahora)
+      PLA -> TAR : TareaDeRespaldo(STRUMIS, INCREMENTAL, PROGRAMADO, null, ahora)
+      note right of TAR : estado = PROGRAMADA
+      PLA -> RPT : guardar(tarea)
+      PLA -> AUD : registrar(SGR, RESPALDO_INICIADO, "STRUMIS", "iniciado", ahora)
+      PLA -> AGE : ejecutarRespaldo(tarea, ahora)
+      AGE -> TAR : iniciar(ahora)
+      note right of TAR : estado = EN_EJECUCION
+      AGE -> EST : ejecutar(STRUMIS, proveedor, agente)
+      EST -> AGE : puntoBaseUltimo()
+      AGE --> EST : idPuntoBase
+      EST -> ADA : ejecutarRespaldo(STRUMIS, INCREMENTAL, idPuntoBase)
+      alt hay conexión a Internet
+        ADA -> API : crearRespaldo("STRUMIS", "incremental", idPuntoBase)
+        API --> ADA : idRespaldoNube
+        ADA --> EST : resultado (exitoso, idRespaldoNube)
+        EST --> AGE : resultado
+        AGE -> TAR : marcarVerificando(idRespaldoNube)
+        note right of TAR : estado = VERIFICANDO
+        AGE -> ADA : validarRespaldo(idRespaldoNube)
+        ADA -> API : consultarValidacion(idRespaldoNube)
+        API --> ADA : "íntegro"
+        ADA --> AGE : resultado (exitoso)
+        AGE -> TAR : completar(ahora)
+        note right of TAR : estado = COMPLETADA
+        AGE -> AGE : registrarExito(tarea)
+      else sin conexión a Internet (RN-17, camino alternativo)
+        ADA --> EST : SinConexionException
+        EST --> AGE : SinConexionException
+        AGE -> TAR : marcarEnCola()
+        note right of TAR : estado = EN_COLA (sin consumir reintentos)
+      end
+      AGE --> PLA : tarea actualizada
+      PLA -> PLA : procesarResultado(tarea, ahora)
+      PLA -> TAR : estado()
+      alt estado = COMPLETADA
+        PLA -> POL : retencionDias()
+        PLA -> TAR : generarPuntoDeRestauracion(retencionDias)
+        TAR -> PUN : PuntoDeRestauracion(tarea, retencionDias)
+        PLA -> RPP : guardar(punto)
+        PLA -> ALE : cerrarAlertas(STRUMIS, ahora)
+        PLA -> AUD : registrar(SGR, RESPALDO_FINALIZADO, "STRUMIS", "COMPLETADA", ahora)
+      else estado = EN_COLA
+        note over PLA : no es un estado final: no se registra RESPALDO_FINALIZADO.\nCada minuto, RelojDelSistema llama a reanudarEnCola(STRUMIS, ahora);\nsi el respaldo ya estaba en la nube, solo se repite la validación.
+      end
+      PLA -> RPT : guardar(tarea)
+      PLA --> CLK : tarea
+    end
   end
-  AGE --> PLA : tarea actualizada
-  PLA -> PLA : procesarResultado(tarea, ahora)
-  PLA -> TAR : estado()
-  alt estado = COMPLETADA
-    PLA -> POL : retencionDias()
-    PLA -> TAR : generarPuntoDeRestauracion(retencionDias)
-    TAR -> PUN : PuntoDeRestauracion(tarea, retencionDias)
-    PLA -> ALE : cerrarAlertas(STRUMIS, ahora)
-    PLA -> AUD : registrar(SGR, RESPALDO_FINALIZADO, "STRUMIS", "COMPLETADA", ahora)
-  else estado = EN_COLA
-    note over PLA : queda en cola; se reenvía al recuperarse la conexión\ncon reanudarEnCola(STRUMIS, ahora)
-  end
-  PLA --> CLK : tarea
 end
 @enduml

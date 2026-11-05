@@ -8,8 +8,7 @@ node "Estación de trabajo\n(PC de Prometva)" as PC {
 }
 
 node "Servidor SGR\n(equipo dedicado, red de Prometva)" as SRV {
-  artifact "sgr-web\n(interfaz web)" as WEB
-  artifact "sgr-app\n(aplicación modular)" as APP
+  artifact "sgr\n(aplicación modular con\ninterfaz web integrada)" as APP
   database "sgr-db\n(BD SQL)" as SDB
 }
 
@@ -29,13 +28,18 @@ cloud "Acronis Cloud\n(externo)" as ACR {
 
 cloud "Servicio de correo\n(externo)" as MAIL
 
-BR --> WEB : HTTPS (443)
-WEB --> APP : llamadas internas
-APP --> SDB : SQL (TCP, red interna)
+BR --> APP : HTTPS (443)
+APP --> SDB : SQL (TCP, solo local)
 APP --> API : HTTPS REST (TLS 1.2+)
 APP --> MAIL : SMTP sobre TLS (587)
 AG1 --> DB1 : lectura local
 AG2 --> DB2 : lectura local
 AG1 --> API : TLS 1.2+\n(datos cifrados AES-256)
 AG2 --> API : TLS 1.2+\n(datos cifrados AES-256)
+
+note bottom of APP
+  Un solo proceso: la interfaz web
+  y los módulos de aplicación se
+  instalan y se reinician juntos (ADR-002).
+end note
 @enduml

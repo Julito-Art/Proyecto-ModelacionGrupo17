@@ -14,6 +14,7 @@ actor "Dirección" as DIR
 actor "Gerente de\nAdministración" as GER
 actor "Acronis Cloud" as ACR
 actor "Servicio de\ncorreo" as MAIL
+actor "Reloj del\nsistema" as CLK
 
 rectangle "SGR - Sistema de Gestión de Respaldos" {
   usecase "CU-01\nRegistrar servidores\nde origen" as CU01
@@ -63,6 +64,11 @@ USR <|-- DIR
 USR <|-- GER
 DIR -- CU09
 
+CLK -- CU04
+CLK -- CU06
+CLK -- CU07
+CLK -- CU11
+
 CU04 ..> CU05 : <<include>>
 CU08 ..> CU04 : <<include>>
 CU14 ..> CU04 : <<include>>
@@ -77,12 +83,34 @@ CU14 -- ACR
 CU15 -- ACR
 CU10 -- MAIL
 CU11 -- MAIL
+CU13 -- MAIL
+
+CU01 ..> CU20 : <<include>>
+CU02 ..> CU20 : <<include>>
+CU03 ..> CU20 : <<include>>
+CU04 ..> CU20 : <<include>>
+CU08 ..> CU20 : <<include>>
+CU10 ..> CU20 : <<include>>
+CU11 ..> CU20 : <<include>>
+CU12 ..> CU20 : <<include>>
+CU13 ..> CU20 : <<include>>
+CU14 ..> CU20 : <<include>>
+CU15 ..> CU20 : <<include>>
+CU16 ..> CU20 : <<include>>
+CU17 ..> CU20 : <<include>>
+CU19 ..> CU20 : <<include>>
 
 note right of CU16
   Es precondición de todos los casos
   de uso de actores humanos.
-  CU-20 lo invocan todos los casos que
+end note
+note bottom of CU20
+  Lo incluyen todos los casos que
   ejecutan acciones relevantes (RN-13).
-  No se dibuja include para no saturar.
+end note
+note right of CLK
+  Actor temporal: cada minuto dispara
+  los ciclos, los reintentos, el reenvío
+  de la cola y el control de atrasos.
 end note
 @enduml

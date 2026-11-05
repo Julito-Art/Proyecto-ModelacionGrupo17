@@ -1,69 +1,96 @@
 @startuml 07-secuencia-hu004-error
-title HU-004 / HU-005 – Respaldo que falla: reintentos y alerta CRITICA (camino de error)
+title HU-004 / HU-005 / HU-011 – Respaldo que falla: reintentos, respaldo no íntegro y alerta CRITICA (camino de error)
 skinparam shadowing false
 skinparam defaultFontName Arial
 skinparam sequenceMessageAlign center
-' @clase PLA PlanificadorDeRespaldos
-' @clase AGE AgenteDeRespaldo
-' @clase TAR TareaDeRespaldo
-' @clase EST RespaldoIncremental
-' @clase ADA AcronisCloudAdapter
-' @clase ALE GestorDeAlertas
-' @clase ALR Alerta
-' @clase NOT NotificadorPorCorreo
-' @clase AUD ServicioDeAuditoria
-actor "Reloj del sistema" as CLK
+participant ":RelojDelSistema" as CLK
 participant ":PlanificadorDeRespaldos" as PLA
 participant "agente:AgenteDeRespaldo\n[STRUMIS]" as AGE
 participant ":TareaDeRespaldo" as TAR
 participant ":RespaldoIncremental" as EST
 participant ":AcronisCloudAdapter" as ADA
 participant ":GestorDeAlertas" as ALE
+participant ":IRepositorioDeAlertas" as RPA
 participant ":Alerta" as ALR
 participant ":NotificadorPorCorreo" as NOT
 participant ":ServicioDeAuditoria" as AUD
 
 == Primer intento: falla por un error del respaldo ==
-PLA -> AGE : ejecutarRespaldo(tarea)
+PLA -> AGE : ejecutarRespaldo(tarea, ahora)
 AGE -> TAR : iniciar(ahora)
 AGE -> EST : ejecutar(STRUMIS, proveedor, agente)
+EST -> AGE : puntoBaseUltimo()
+AGE --> EST : idPuntoBase
 EST -> ADA : ejecutarRespaldo(STRUMIS, INCREMENTAL, idPuntoBase)
 ADA --> EST : resultado (exitoso = false, motivo)
 EST --> AGE : resultado
 AGE -> TAR : registrarFallo(motivo, ahora)
 note right of TAR : reintentos = 1, estado = EN_REINTENTO
+AGE --> PLA : tarea actualizada
 PLA -> PLA : procesarResultado(tarea, ahora)
 PLA -> TAR : estado()
+note over PLA : EN_REINTENTO no es final:\nno se registra RESPALDO_FINALIZADO
 
 == Reintentos (RN-06: hasta 3, uno por minuto) ==
 loop mientras estado = EN_REINTENTO
   CLK -> PLA : reintentar(tarea, ahora)
-  PLA -> AGE : ejecutarRespaldo(tarea)
+  note right of PLA : pasó 1 minuto desde el último intento
+  PLA -> AGE : ejecutarRespaldo(tarea, ahora)
   AGE -> TAR : iniciar(ahora)
-  note right of TAR : EN_REINTENTO -> EN_EJECUCION\n[pasó 1 minuto]
+  note right of TAR : EN_REINTENTO -> EN_EJECUCION
   AGE -> EST : ejecutar(STRUMIS, proveedor, agente)
+  EST -> AGE : puntoBaseUltimo()
+  AGE --> EST : idPuntoBase
   EST -> ADA : ejecutarRespaldo(STRUMIS, INCREMENTAL, idPuntoBase)
-  ADA --> EST : resultado (exitoso, idRespaldoNube)
-  EST --> AGE : resultado
-  alt el reintento tiene éxito
+  alt el envío vuelve a fallar
+    ADA --> EST : resultado (exitoso = false, motivo)
+    EST --> AGE : resultado
+    AGE -> TAR : registrarFallo(motivo, ahora)
+  else el envío funciona
+    ADA --> EST : resultado (exitoso, idRespaldoNube)
+    EST --> AGE : resultado
     AGE -> TAR : marcarVerificando(idRespaldoNube)
     note right of TAR : EN_EJECUCION -> VERIFICANDO
     AGE -> ADA : validarRespaldo(idRespaldoNube)
-    AGE -> TAR : completar(ahora)
-  else el reintento falla
-    AGE -> TAR : registrarFallo(motivo, ahora)
+    alt Acronis lo valida como íntegro
+      ADA --> AGE : resultado (exitoso)
+      AGE -> TAR : completar(ahora)
+      AGE -> AGE : registrarExito(tarea)
+    else respaldo no íntegro o tiempo de espera agotado (RN-07, RN-23)
+      ADA --> AGE : resultado (exitoso = false, motivo)
+      AGE -> TAR : registrarFallo(motivo, ahora)
+      note right of TAR : no se genera punto de restauración
+    end
   end
+  AGE --> PLA : tarea actualizada
+  PLA -> PLA : procesarResultado(tarea, ahora)
   PLA -> TAR : estado()
 end
 
 == Resultado final ==
 alt estado = FALLIDA (reintentos agotados)
   PLA -> ALE : alertarFalla(tarea, ahora)
-  ALE -> ALR : Alerta(FALLA, CRITICA, STRUMIS, mensaje, tarea, ahora)
-  ALE -> ALR : destinatarios()
-  ALR --> ALE : [RESPONSABLE_DE_RESPALDOS, DIRECCION]
-  ALE -> NOT : notificar(alerta, roles)
-  ALE -> AUD : registrar(SGR, ALERTA_GENERADA, "STRUMIS", "CRITICA", ahora)
+  ALE -> RPA : abierta(STRUMIS, FALLA)
+  RPA --> ALE : alertaAbierta [0..1]
+  alt ya hay una alerta FALLA ABIERTA de STRUMIS (RN-08)
+    ALE -> ALR : actualizar(mensaje, ahora)
+    note right of ALR : se actualizan motivo y hora;\nno se reenvía el correo ni se\nregistra otra ALERTA_GENERADA
+    ALE -> RPA : guardar(alerta)
+  else no hay alerta abierta
+    ALE -> ALR : Alerta(FALLA, CRITICA, STRUMIS, mensaje, tarea, null, ahora)
+    ALE -> ALR : destinatarios()
+    ALR --> ALE : [RESPONSABLE_DE_RESPALDOS, DIRECCION]
+    ALE -> NOT : notificar(alerta, roles)
+    alt el correo se envía
+      ALE -> ALR : marcarCorreoEnviado()
+    else el servicio de correo falla
+      NOT --> ALE : NotificacionException(motivo)
+      ALE -> ALR : marcarCorreoFallido(motivo)
+      note right of ALR : la alerta sigue ABIERTA\ny visible en el panel
+    end
+    ALE -> RPA : guardar(alerta)
+    ALE -> AUD : registrar(SGR, ALERTA_GENERADA, "STRUMIS", "CRITICA", ahora)
+  end
   PLA -> AUD : registrar(SGR, RESPALDO_FINALIZADO, "STRUMIS", "FALLIDA", ahora)
 else estado = COMPLETADA (algún reintento tuvo éxito)
   note over PLA : no se genera alerta (HU-005);\ncontinúa como en el flujo principal

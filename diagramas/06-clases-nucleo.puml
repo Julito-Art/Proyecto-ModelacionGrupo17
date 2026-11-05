@@ -13,28 +13,40 @@ skinparam class {
   BackgroundColor<<externo>> #EEEEEE
 }
 hide empty members
+class RelojDelSistema {
+  + {static} PERIODO_SEG: int = 60
+  + tic(ahora: DateTime): void
+}
 class PlanificadorDeRespaldos <<Singleton>> {
   - {static} instancia: PlanificadorDeRespaldos
   - {static} INTERVALO_ENTRE_REINTENTOS_MIN: int = 1
   - politicas: Map<ServidorOrigen, PoliticaDeRespaldo>
+  - gestorDeAlertas: GestorDeAlertas
+  - auditoria: ServicioDeAuditoria
+  - repoPoliticas: IRepositorioDePoliticas
+  - repoTareas: IRepositorioDeTareas
+  - repoPuntos: IRepositorioDePuntos
   - PlanificadorDeRespaldos()
   + {static} obtenerInstancia(): PlanificadorDeRespaldos
-  + definirPolitica(politica: PoliticaDeRespaldo, usuario: Usuario, ahora: DateTime): void
+  + configurar(gestor: GestorDeAlertas, auditoria: ServicioDeAuditoria, repoPoliticas: IRepositorioDePoliticas, repoTareas: IRepositorioDeTareas, repoPuntos: IRepositorioDePuntos): void
+  + definirPolitica(politica: PoliticaDeRespaldo, usuario: Usuario, ahora: DateTime): void <<throws ValidacionException, PermisoDenegadoException>>
   + obtenerPolitica(servidor: ServidorOrigen): PoliticaDeRespaldo [0..1]
   + estaProtegido(servidor: ServidorOrigen): boolean
+  + recuperarPendientes(ahora: DateTime): void
   + ejecutarCiclo(servidor: ServidorOrigen, ahora: DateTime): TareaDeRespaldo [0..1]
   + lanzarRespaldoManual(servidor: ServidorOrigen, usuario: Usuario, ahora: DateTime): TareaDeRespaldo
   + lanzarRespaldoPrevioARestauracion(servidor: ServidorOrigen, usuario: Usuario, ahora: DateTime): TareaDeRespaldo
   + reintentar(tarea: TareaDeRespaldo, ahora: DateTime): void
   + reanudarEnCola(servidor: ServidorOrigen, ahora: DateTime): void
   + detectarAtrasos(ahora: DateTime): List<Alerta>
-  - lanzar(servidor: ServidorOrigen, tipo: TipoDeRespaldo, disparador: TipoDeDisparo, usuario: Usuario, ahora: DateTime): TareaDeRespaldo
+  - lanzar(servidor: ServidorOrigen, tipo: TipoDeRespaldo, disparador: TipoDeDisparo, usuario: Usuario [0..1], ahora: DateTime): TareaDeRespaldo
   - procesarResultado(tarea: TareaDeRespaldo, ahora: DateTime): void
 }
 class AgenteDeRespaldo <<Multiton>> {
   - {static} instancias: Map<ServidorOrigen, AgenteDeRespaldo>
   - servidor: ServidorOrigen
   - tareaEnCurso: TareaDeRespaldo [0..1]
+  - inicioUltimoCiclo: DateTime [0..1]
   - ultimoExitoso: DateTime [0..1]
   - fechaUltimoCompleto: DateTime [0..1]
   - fechaUltimoDiferencial: DateTime [0..1]
@@ -43,15 +55,17 @@ class AgenteDeRespaldo <<Multiton>> {
   - AgenteDeRespaldo(servidor: ServidorOrigen)
   + {static} obtenerInstancia(servidor: ServidorOrigen): AgenteDeRespaldo
   + {static} existeInstancia(servidor: ServidorOrigen): boolean
-  + ejecutarRespaldo(tarea: TareaDeRespaldo): void
+  + ejecutarRespaldo(tarea: TareaDeRespaldo, ahora: DateTime): void
   + hayRespaldoEnCurso(): boolean
-  + restaurar(solicitud: SolicitudDeRestauracion): boolean
+  + registrarInicioDeCiclo(ahora: DateTime): void
+  + inicioUltimoCiclo(): DateTime [0..1]
+  + restaurar(solicitud: SolicitudDeRestauracion, ahora: DateTime): boolean <<throws SinConexionException>>
   + registrarExito(tarea: TareaDeRespaldo): void
-  + ultimoExitoso(): DateTime
-  + fechaUltimoCompleto(): DateTime
-  + fechaUltimoDiferencial(): DateTime
-  + puntoBaseCompleto(): String
-  + puntoBaseUltimo(): String
+  + ultimoExitoso(): DateTime [0..1]
+  + fechaUltimoCompleto(): DateTime [0..1]
+  + fechaUltimoDiferencial(): DateTime [0..1]
+  + puntoBaseCompleto(): String [0..1]
+  + puntoBaseUltimo(): String [0..1]
 }
 class PoliticaDeRespaldo {
   + {static} INTERVALO_MIN: int = 5
@@ -68,12 +82,12 @@ class PoliticaDeRespaldo {
   - horaDiferencial: LocalTime
   - retencionDias: int
   + PoliticaDeRespaldo(servidor: ServidorOrigen)
-  + PoliticaDeRespaldo(servidor: ServidorOrigen, intervaloMinutos: int, retencionDias: int, horaDiferencial: LocalTime)
+  + PoliticaDeRespaldo(servidor: ServidorOrigen, intervaloMinutos: String, retencionDias: String, horaDiferencial: String)
   + validar(): boolean
   + errores(): List<String>
   + {static} esHoraLaboral(hora: LocalTime): boolean
   + cumpleObjetivoDePerdida(): boolean
-  + proximaEjecucion(desde: DateTime): DateTime
+  + proximaEjecucion(inicioUltimoCiclo: DateTime [0..1], ahora: DateTime): DateTime
   + tipoParaCiclo(agente: AgenteDeRespaldo, ahora: DateTime): TipoDeRespaldo
   + servidor(): ServidorOrigen
   + intervaloMinutos(): int
@@ -93,7 +107,7 @@ class TareaDeRespaldo {
   - reintentos: int
   - idRespaldoNube: String [0..1]
   - motivoFallo: String [0..1]
-  + TareaDeRespaldo(servidor: ServidorOrigen, tipo: TipoDeRespaldo, disparador: TipoDeDisparo, usuario: Usuario, ahora: DateTime)
+  + TareaDeRespaldo(servidor: ServidorOrigen, tipo: TipoDeRespaldo, disparador: TipoDeDisparo, usuario: Usuario [0..1], ahora: DateTime)
   + iniciar(ahora: DateTime): void
   + marcarVerificando(idRespaldoNube: String): void
   + completar(ahora: DateTime): void
@@ -101,13 +115,14 @@ class TareaDeRespaldo {
   + marcarEnCola(): void
   + puedeReintentar(): boolean
   + estaEnCurso(): boolean
+  + estaEnLaNube(): boolean
   + generarPuntoDeRestauracion(retencionDias: int): PuntoDeRestauracion
   + estado(): EstadoDeTarea
   + servidor(): ServidorOrigen
   + tipo(): TipoDeRespaldo
-  + idRespaldoNube(): String
-  + motivoFallo(): String
-  + fin(): DateTime
+  + idRespaldoNube(): String [0..1]
+  + motivoFallo(): String [0..1]
+  + fin(): DateTime [0..1]
 }
 class PuntoDeRestauracion {
   - id: long
@@ -119,6 +134,7 @@ class PuntoDeRestauracion {
   - vigenteHasta: DateTime
   + PuntoDeRestauracion(tarea: TareaDeRespaldo, retencionDias: int)
   + estaVigente(ahora: DateTime): boolean
+  + esDiario(): boolean
   + servidor(): ServidorOrigen
   + idRespaldoNube(): String
 }
@@ -126,6 +142,14 @@ interface IEstrategiaDeRespaldo <<Strategy>>
 interface IProveedorNube <<Adapter>>
 class GestorDeAlertas
 class ServicioDeAuditoria
+class ValidacionException <<exception>> {
+  - errores: List<String>
+  + errores(): List<String>
+}
+class PermisoDenegadoException <<exception>> {
+  - mensaje: String
+  + mensaje(): String
+}
 interface IRepositorioDePoliticas {
   + guardar(politica: PoliticaDeRespaldo): void
   + obtener(servidor: ServidorOrigen): PoliticaDeRespaldo [0..1]
@@ -133,12 +157,20 @@ interface IRepositorioDePoliticas {
 interface IRepositorioDeTareas {
   + guardar(tarea: TareaDeRespaldo): void
   + pendientes(): List<TareaDeRespaldo>
+  + consultar(servidor: ServidorOrigen [0..1], estado: EstadoDeTarea [0..1], desde: DateTime, hasta: DateTime): List<TareaDeRespaldo>
+}
+interface IRepositorioDePuntos {
+  + guardar(punto: PuntoDeRestauracion): void
+  + vigentes(servidor: ServidorOrigen, desde: DateTime, hasta: DateTime, soloDiarios: boolean, pagina: int, tamano: int, ahora: DateTime): List<PuntoDeRestauracion>
+  + contarVigentes(servidor: ServidorOrigen, desde: DateTime, hasta: DateTime, soloDiarios: boolean, ahora: DateTime): int
 }
 class Usuario
+RelojDelSistema "1" --> "1" PlanificadorDeRespaldos : invoca cada minuto
 PlanificadorDeRespaldos "1" --> "0..2" PoliticaDeRespaldo : gestiona
 PlanificadorDeRespaldos "1" --> "1" GestorDeAlertas : usa
 PlanificadorDeRespaldos "1" --> "1" IRepositorioDePoliticas : guarda políticas en
 PlanificadorDeRespaldos "1" --> "1" IRepositorioDeTareas : guarda tareas en
+PlanificadorDeRespaldos "1" --> "1" IRepositorioDePuntos : guarda puntos en
 PlanificadorDeRespaldos "1" --> "1" ServicioDeAuditoria : usa
 AgenteDeRespaldo "1" --> "1" IProveedorNube : proveedor
 AgenteDeRespaldo "1" o-- "3" IEstrategiaDeRespaldo : estrategias
@@ -147,11 +179,18 @@ TareaDeRespaldo "1" --> "0..1" PuntoDeRestauracion : genera
 TareaDeRespaldo "*" --> "0..1" Usuario : lanzada por
 PlanificadorDeRespaldos ..> AgenteDeRespaldo : obtiene (Multiton)
 PlanificadorDeRespaldos ..> TareaDeRespaldo : crea
+PlanificadorDeRespaldos ..> ValidacionException : <<throws>>
+PlanificadorDeRespaldos ..> PermisoDenegadoException : <<throws>>
 PoliticaDeRespaldo ..> AgenteDeRespaldo : consulta
 IEstrategiaDeRespaldo ..> IProveedorNube : usa
-GestorDeAlertas ..> ServicioDeAuditoria
+GestorDeAlertas "1" --> "1" ServicioDeAuditoria : registra en
 note bottom of TareaDeRespaldo
   Se omiten getters triviales que no se usan en los
   diagramas de estados y de secuencia.
+end note
+note right of PlanificadorDeRespaldos
+  configurar(...) se llama una sola vez al arrancar
+  el servicio (o desde las pruebas, con dobles);
+  después del arranque llama a recuperarPendientes(ahora).
 end note
 @enduml

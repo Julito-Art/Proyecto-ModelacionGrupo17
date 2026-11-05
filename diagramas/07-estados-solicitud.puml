@@ -12,9 +12,16 @@ hide empty description
 PENDIENTE --> AUTORIZADA : autorizar(resolutor)\n[resolutor con rol DIRECCION y distinto del solicitante]
 PENDIENTE --> RECHAZADA : rechazar(resolutor, motivo)\n[resolutor con rol DIRECCION y motivo no vacío]
 AUTORIZADA --> EN_EJECUCION : iniciarEjecucion()\n[respaldo previo a restauración completado]
+AUTORIZADA --> FALLIDA : fallar(motivo)\n[el respaldo previo a restauración quedó FALLIDA]
 EN_EJECUCION --> COMPLETADA : completar()\n[datos restaurados]
 EN_EJECUCION --> FALLIDA : fallar(motivo)\n[error al restaurar]
 RECHAZADA --> [*]
 COMPLETADA --> [*]
 FALLIDA --> [*]
+
+note right of FALLIDA
+  Estado final. Genera una Alerta CRITICA
+  de tipo RESTAURACION_FALLIDA
+  (GestorDeAlertas.alertarFallaRestauracion).
+end note
 @enduml

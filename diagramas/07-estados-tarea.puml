@@ -8,18 +8,19 @@ skinparam state {
 }
 hide empty description
 
-[*] --> PROGRAMADA : TareaDeRespaldo(servidor, tipo, disparador, usuario, ahora)\n[ciclo del Planificador o respaldo manual]
+[*] --> PROGRAMADA : TareaDeRespaldo(servidor, tipo, disparador, usuario, ahora)\n[ciclo del Planificador (PROGRAMADO), respaldo manual (MANUAL)\no respaldo previo a una restauración (PREVIO_A_RESTAURACION)]
 PROGRAMADA --> EN_EJECUCION : iniciar(ahora)\n[no hay otro respaldo en curso del servidor]
 EN_EJECUCION --> VERIFICANDO : marcarVerificando(idRespaldoNube)\n[respaldo enviado a la nube]
 VERIFICANDO --> COMPLETADA : completar(ahora)\n[Acronis valida el respaldo como íntegro]
 EN_EJECUCION --> EN_COLA : marcarEnCola()\n[sin conexión a Internet]
 VERIFICANDO --> EN_COLA : marcarEnCola()\n[sin conexión a Internet]
-EN_COLA --> EN_EJECUCION : iniciar(ahora)\n[conexión recuperada]
+EN_COLA --> EN_EJECUCION : iniciar(ahora)\n[conexión recuperada y el respaldo\nno llegó a la nube (idRespaldoNube = nulo)]
+EN_COLA --> VERIFICANDO : marcarVerificando(idRespaldoNube)\n[conexión recuperada y el respaldo\nya está en la nube (idRespaldoNube ≠ nulo)]
 EN_EJECUCION --> EN_REINTENTO : registrarFallo(motivo, ahora)\n[error del respaldo y reintentos < 3]
-VERIFICANDO --> EN_REINTENTO : registrarFallo(motivo, ahora)\n[respaldo no íntegro y reintentos < 3]
+VERIFICANDO --> EN_REINTENTO : registrarFallo(motivo, ahora)\n[respaldo no íntegro o tiempo de espera\nagotado, y reintentos < 3]
 EN_REINTENTO --> EN_EJECUCION : iniciar(ahora)\n[pasó 1 minuto]
 EN_EJECUCION --> FALLIDA : registrarFallo(motivo, ahora)\n[error del respaldo y reintentos = 3]
-VERIFICANDO --> FALLIDA : registrarFallo(motivo, ahora)\n[respaldo no íntegro y reintentos = 3]
+VERIFICANDO --> FALLIDA : registrarFallo(motivo, ahora)\n[respaldo no íntegro o tiempo de espera\nagotado, y reintentos = 3]
 COMPLETADA --> [*]
 FALLIDA --> [*]
 
@@ -28,7 +29,11 @@ note right of COMPLETADA
   PuntoDeRestauracion.
 end note
 note right of FALLIDA
-  Estado final. Genera una
-  Alerta CRITICA (tipo FALLA).
+  Estado final. Crea o actualiza la
+  Alerta CRITICA de tipo FALLA (RN-08).
+end note
+note left of EN_COLA
+  No consume reintentos (RN-17).
+  Cuenta como respaldo en curso (RN-05).
 end note
 @enduml

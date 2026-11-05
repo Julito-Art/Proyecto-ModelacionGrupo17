@@ -52,6 +52,7 @@ enum EstadoDeSolicitud {
 enum TipoDeAlerta {
   FALLA
   ATRASO
+  RESTAURACION_FALLIDA
 }
 enum Severidad {
   ADVERTENCIA

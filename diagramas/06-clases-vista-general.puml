@@ -14,6 +14,7 @@ skinparam class {
 }
 hide empty members
 left to right direction
+class RelojDelSistema
 class PlanificadorDeRespaldos <<Singleton>>
 class AgenteDeRespaldo <<Multiton>>
 class PoliticaDeRespaldo
@@ -29,9 +30,16 @@ class AcronisCloudAdapter <<Adapter>>
 class ApiAcronis <<externo>>
 class SinConexionException <<exception>>
 class NotificacionException <<exception>>
+class ValidacionException <<exception>>
+class PermisoDenegadoException <<exception>>
 interface IRepositorioDePoliticas
 interface IRepositorioDeTareas
+interface IRepositorioDePuntos
 interface IRepositorioDeUsuarios
+interface IRepositorioDeAlertas
+interface IRepositorioDeAuditoria
+interface IRepositorioDeSolicitudes
+interface IRepositorioDeSimulacros
 class GestorDeAlertas
 class Alerta
 interface INotificador
@@ -40,6 +48,7 @@ class ServicioDeAuditoria
 class RegistroDeAuditoria <<inmutable>>
 class SolicitudDeRestauracion
 class ServicioDeRestauracion
+class ResultadoDeSimulacro
 class Usuario
 class InformeMensual
 IEstrategiaDeRespaldo <|.. RespaldoCompleto
@@ -47,9 +56,13 @@ IEstrategiaDeRespaldo <|.. RespaldoIncremental
 IEstrategiaDeRespaldo <|.. RespaldoDiferencial
 IProveedorNube <|.. AcronisCloudAdapter
 INotificador <|.. NotificadorPorCorreo
+RelojDelSistema "1" --> "1" PlanificadorDeRespaldos : invoca cada minuto
 PlanificadorDeRespaldos "1" --> "0..2" PoliticaDeRespaldo : gestiona
 PlanificadorDeRespaldos "1" --> "1" GestorDeAlertas : usa
 PlanificadorDeRespaldos "1" --> "1" ServicioDeAuditoria : usa
+PlanificadorDeRespaldos "1" --> "1" IRepositorioDePoliticas : guarda políticas en
+PlanificadorDeRespaldos "1" --> "1" IRepositorioDeTareas : guarda tareas en
+PlanificadorDeRespaldos "1" --> "1" IRepositorioDePuntos : guarda puntos en
 AgenteDeRespaldo "1" --> "1" IProveedorNube : proveedor
 AgenteDeRespaldo "1" o-- "3" IEstrategiaDeRespaldo : estrategias
 AgenteDeRespaldo "1" --> "0..1" TareaDeRespaldo : en curso
@@ -60,10 +73,22 @@ SolicitudDeRestauracion "*" --> "1" PuntoDeRestauracion : sobre
 SolicitudDeRestauracion "*" --> "1" Usuario : solicitante
 SolicitudDeRestauracion "*" --> "0..1" Usuario : resolutor
 Alerta "*" --> "0..1" TareaDeRespaldo : origen
+Alerta "*" --> "0..1" SolicitudDeRestauracion : origen
 GestorDeAlertas "1" --> "1" INotificador : notifica con
-GestorDeAlertas "1" o-- "*" Alerta : abiertas
-ServicioDeAuditoria "1" --> "*" RegistroDeAuditoria : registra
+GestorDeAlertas "1" --> "*" Alerta : gestiona
+GestorDeAlertas "1" --> "1" IRepositorioDeAlertas : guarda alertas en
+GestorDeAlertas "1" --> "1" ServicioDeAuditoria : registra en
+ServicioDeAuditoria "1" --> "1" IRepositorioDeAuditoria : guarda en
 ServicioDeRestauracion "1" --> "*" SolicitudDeRestauracion : gestiona
+ServicioDeRestauracion "1" --> "1" IRepositorioDePuntos : lee puntos de
+ServicioDeRestauracion "1" --> "1" IRepositorioDeSolicitudes : guarda solicitudes en
+ServicioDeRestauracion "1" --> "1" IRepositorioDeSimulacros : guarda simulacros en
+ServicioDeRestauracion "1" --> "1" IProveedorNube : simulacros
+ServicioDeRestauracion "1" --> "1" GestorDeAlertas : restauración fallida
+ServicioDeRestauracion "1" --> "1" INotificador : aviso de resolución
+ServicioDeRestauracion "1" --> "1" ServicioDeAuditoria : registra en
+ResultadoDeSimulacro "*" --> "1" PuntoDeRestauracion : sobre
+NotificadorPorCorreo "1" --> "1" IRepositorioDeUsuarios : obtiene correos por rol
 PlanificadorDeRespaldos ..> AgenteDeRespaldo : obtiene (Multiton)
 PlanificadorDeRespaldos ..> TareaDeRespaldo : crea
 PoliticaDeRespaldo ..> AgenteDeRespaldo : consulta
@@ -71,14 +96,15 @@ IEstrategiaDeRespaldo ..> IProveedorNube : usa
 IEstrategiaDeRespaldo ..> ResultadoDeRespaldo : devuelve
 IProveedorNube ..> ResultadoDeRespaldo : devuelve
 IProveedorNube ..> SinConexionException : <<throws>>
+IEstrategiaDeRespaldo ..> SinConexionException : <<throws>>
 INotificador ..> NotificacionException : <<throws>>
-PlanificadorDeRespaldos "1" --> "1" IRepositorioDePoliticas : guarda políticas en
-PlanificadorDeRespaldos "1" --> "1" IRepositorioDeTareas : guarda tareas en
-NotificadorPorCorreo "1" --> "1" IRepositorioDeUsuarios : obtiene correos por rol
-GestorDeAlertas ..> ServicioDeAuditoria
+PlanificadorDeRespaldos ..> ValidacionException : <<throws>>
+PlanificadorDeRespaldos ..> PermisoDenegadoException : <<throws>>
+ServicioDeRestauracion ..> ValidacionException : <<throws>>
+ServicioDeRestauracion ..> PermisoDenegadoException : <<throws>>
+ServicioDeAuditoria ..> RegistroDeAuditoria : crea
 ServicioDeRestauracion ..> PlanificadorDeRespaldos : respaldo previo
 ServicioDeRestauracion ..> AgenteDeRespaldo : restaurar
-ServicioDeRestauracion ..> ServicioDeAuditoria
 InformeMensual ..> TareaDeRespaldo
 InformeMensual ..> SolicitudDeRestauracion
 @enduml
