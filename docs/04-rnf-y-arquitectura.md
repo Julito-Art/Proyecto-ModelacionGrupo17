@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Entregable** | Punto 4 de la consigna (Parcial 2) |
-| **Estado** | Versión final – 30/10/2026 |
+| **Estado** | Versión final, corregida según la devolución – 04/11/2026 |
 | **Base** | [00 – Documento maestro](00-documento-maestro.md), [03 – Contexto y casos de uso](03-contexto-y-casos-de-uso.md) |
 | **Fuentes de los diagramas** | [`04-componentes.puml`](../diagramas/04-componentes.puml) y [`04-despliegue.puml`](../diagramas/04-despliegue.puml) |
 | **Decisiones registradas** | [ADR-001](adr/ADR-001-proveedor-de-respaldo-acronis.md), [ADR-002](adr/ADR-002-estilo-monolito-modular.md), [ADR-003](adr/ADR-003-servidor-dedicado-para-el-sgr.md) |
@@ -55,17 +55,19 @@ Con 30 personas en la empresa, 3 roles de usuario y 2 servidores a respaldar, la
 |---|---|---|---|---|
 | Interfaz Web | Presentación | Pantallas de todos los roles. | — | todas |
 | Servicio de Acceso | Aplicación | Autenticación, roles y permisos. | `Usuario`, `Rol` | HU-018, HU-019 |
-| Servicio de Políticas | Aplicación | Define y valida las políticas de respaldo. | `PoliticaDeRespaldo` | HU-003 |
 | Gestor de Agentes | Aplicación | Registra servidores, mantiene un agente por servidor y prueba la conexión con la nube. | `ServidorOrigen`, `AgenteDeRespaldo` | HU-001, HU-002 |
-| Planificador | Aplicación | Dispara los respaldos según las políticas y detecta atrasos. | `PlanificadorDeRespaldos` | HU-004, HU-012 |
-| Servicio de Respaldo | Aplicación | Crea y controla las tareas, reintentos, cola, verificación e historial. | `TareaDeRespaldo`, `IEstrategiaDeRespaldo`, `RespaldoCompleto`, `RespaldoIncremental`, `RespaldoDiferencial`, `ResultadoDeRespaldo`, `PuntoDeRestauracion` | HU-004 a HU-010, HU-022 |
-| Servicio de Alertas | Aplicación | Genera alertas por falla o atraso y las notifica. | `GestorDeAlertas`, `Alerta` | HU-011, HU-012, HU-013 |
-| Servicio de Restauración | Aplicación | Solicitud, autorización, ejecución y simulacro de restauraciones. | `ServicioDeRestauracion`, `SolicitudDeRestauracion` | HU-014 a HU-017 |
+| Reloj del Sistema | Aplicación | Temporizador que una vez por minuto invoca al Planificador. | `RelojDelSistema` | HU-004, HU-005, HU-007, HU-012 |
+| Planificador | Aplicación | **Dueño de las políticas:** las define, valida y guarda (`definirPolitica`); dispara los respaldos según las políticas, controla reintentos y cola, recupera lo pendiente al reiniciar y detecta atrasos. | `PlanificadorDeRespaldos`, `PoliticaDeRespaldo` | HU-003, HU-004, HU-005, HU-006, HU-007, HU-012 |
+| Servicio de Respaldo | Aplicación | Tareas, estrategias de respaldo, verificación, puntos de restauración e historial con filtros. | `TareaDeRespaldo`, `IEstrategiaDeRespaldo`, `RespaldoCompleto`, `RespaldoIncremental`, `RespaldoDiferencial`, `ResultadoDeRespaldo`, `PuntoDeRestauracion` | HU-004 a HU-010, HU-022 |
+| Servicio de Alertas | Aplicación | Genera, actualiza y cierra alertas por falla, atraso o restauración fallida, y las notifica. | `GestorDeAlertas`, `Alerta` | HU-011, HU-012, HU-013, HU-016 |
+| Servicio de Restauración | Aplicación | Solicitud, autorización (con aviso al solicitante), ejecución y simulacro de restauraciones. | `ServicioDeRestauracion`, `SolicitudDeRestauracion`, `ResultadoDeSimulacro` | HU-014 a HU-017 |
 | Servicio de Auditoría | Aplicación | Registra (HU-023) y consulta (HU-020) las acciones. | `ServicioDeAuditoria`, `RegistroDeAuditoria` | HU-020, HU-023 |
 | Servicio de Informes | Aplicación | Genera el informe mensual. | `InformeMensual` | HU-021 |
-| `IProveedorNube` / Adaptador Acronis | Puerto / Infraestructura | Habla con la API de Acronis Cloud. | `IProveedorNube`, `AcronisCloudAdapter`, `ApiAcronis`, `SinConexionException` | HU-002, HU-004, HU-016 |
-| `INotificador` / Notificador por Correo | Puerto / Infraestructura | Envía correos. | `INotificador`, `NotificadorPorCorreo` | HU-011, HU-013 |
-| Repositorios | Infraestructura | Acceso a la base de datos del SGR. | — | todas |
+| `IProveedorNube` / Adaptador Acronis | Puerto / Infraestructura | Habla con la API de Acronis Cloud. | `IProveedorNube`, `AcronisCloudAdapter`, `ApiAcronis`, `SinConexionException` | HU-002, HU-004, HU-016, HU-017 |
+| `INotificador` / Notificador por Correo | Puerto / Infraestructura | Envía correos de alertas y de resolución de solicitudes. | `INotificador`, `NotificadorPorCorreo`, `NotificacionException` | HU-011, HU-013, HU-015 |
+| `IRepositorioDe…` / Repositorios | Puerto / Infraestructura | Acceso a la base `sgr-db`. Lo usan todos los servicios de aplicación y el notificador. | Los ocho puertos `IRepositorioDe…` (políticas, tareas, puntos, usuarios, alertas, auditoría, solicitudes y simulacros) | todas |
+
+**Dependencias entre componentes.** Cada flecha del diagrama corresponde a una relación del diagrama de clases: el Reloj invoca al Planificador; el Planificador obtiene los agentes, usa el Servicio de Respaldo y las Alertas, y registra en Auditoría; Restauración pide el respaldo previo al Planificador, usa los agentes, las Alertas (restauración fallida), `IProveedorNube` (simulacros), `INotificador` (aviso de resolución) y Auditoría; Alertas registra en Auditoría; Informes lee de Respaldo y de Restauración. Todos los servicios de aplicación acceden a los datos solo mediante los puertos `IRepositorioDe…`.
 
 ## 4. Vista de despliegue
 
@@ -74,7 +76,7 @@ Con 30 personas en la empresa, 3 roles de usuario y 2 servidores a respaldar, la
 | Nodo | Artefactos | Comentario |
 |---|---|---|
 | Estación de trabajo (PC de Prometva) | Navegador web | Desde acá usan el SGR los tres roles. |
-| **Servidor SGR** (equipo dedicado nuevo, en la red de Prometva) | `sgr-web`, `sgr-app`, `sgr-db` (base de datos SQL) | Decisión en [ADR-003](adr/ADR-003-servidor-dedicado-para-el-sgr.md). Separado de los servidores de producción. |
+| **Servidor SGR** (equipo dedicado nuevo, en la red de Prometva) | `sgr` (un único artefacto: aplicación modular con la interfaz web integrada) y `sgr-db` (base de datos SQL) | Decisión en [ADR-003](adr/ADR-003-servidor-dedicado-para-el-sgr.md). Separado de los servidores de producción. Coincide con la «sola unidad desplegable» del diagrama de componentes y del ADR-002. |
 | Servidor Strumis (existente) | Agente Acronis, BD de Strumis (SQL) | No se altera su software ni sus procesos; solo se agrega el agente de Acronis (RE-01, RE-06). |
 | Servidor Tango (existente) | Agente Acronis, BD de Tango (Microsoft SQL) | Ídem. |
 | Acronis Cloud (externo) | API y servicio de respaldo | Almacena los respaldos. |
@@ -82,11 +84,10 @@ Con 30 personas en la empresa, 3 roles de usuario y 2 servidores a respaldar, la
 
 | Enlace | Protocolo | Seguridad |
 |---|---|---|
-| Navegador → `sgr-web` | HTTPS (puerto 443) | TLS (RNF-02) |
-| `sgr-web` → `sgr-app` | Llamadas internas del mismo equipo | — |
-| `sgr-app` → `sgr-db` | SQL sobre TCP, red interna | Acceso solo desde el Servidor SGR |
-| `sgr-app` → API de Acronis | HTTPS REST | TLS 1.2 o superior (RNF-02) |
-| `sgr-app` → Servicio de correo | SMTP sobre TLS (puerto 587) | Cifrado en tránsito |
+| Navegador → `sgr` | HTTPS (puerto 443) | TLS (RNF-02) |
+| `sgr` → `sgr-db` | SQL sobre TCP, solo local | Acceso solo desde el Servidor SGR |
+| `sgr` → API de Acronis | HTTPS REST | TLS 1.2 o superior (RNF-02) |
+| `sgr` → Servicio de correo | SMTP sobre TLS (puerto 587) | Cifrado en tránsito |
 | Agente Acronis → Acronis Cloud | TLS 1.2 o superior | Datos cifrados con AES-256 (RNF-02) |
 
 ## 5. Matriz RNF ↔ decisiones de arquitectura
@@ -95,10 +96,10 @@ Con 30 personas en la empresa, 3 roles de usuario y 2 servidores a respaldar, la
 |---|---|---|
 | RNF-01 | Planificador persistente; reintentos (RN-06); detección de atrasos y alertas; intervalo por defecto de 5 minutos (hasta 10) con respaldos incrementales de pocos datos. | ADR-001, ADR-002 |
 | RNF-02 | Cifrado de Acronis (AES-256 y TLS); datos que no pasan por el SGR; HTTPS en la interfaz; un único adaptador hacia el exterior. | ADR-001, ADR-002 |
-| RNF-03 | Monolito modular de un solo servicio; estado de tareas persistido; reinicio automático; servidor dedicado. | ADR-002, ADR-003 |
+| RNF-03 | Monolito modular de un solo artefacto; estado de tareas, políticas y puntos persistido; `recuperarPendientes` al reiniciar; servidor dedicado. | ADR-002, ADR-003 |
 | RNF-04 | Respaldo ejecutado por el agente y no por el SGR; incrementales frecuentes (pocos datos), diferenciales y completo inicial fuera del horario laboral; SGR separado de producción. | ADR-001, ADR-003 |
 | RNF-05 | Restauración ejecutada por Acronis; simulacros periódicos que miden el tiempo; enlace de al menos 100 Mbps de bajada. | ADR-001 |
-| RNF-06 | Servicio de Auditoría transversal (HU-023) y registros inmutables, con índices por fecha, usuario y acción. | ADR-002 |
+| RNF-06 | Servicio de Auditoría transversal (HU-023); `IRepositorioDeAuditoria` que solo agrega registros, conservados 12 meses, con índices por fecha, usuario y acción. | ADR-002 |
 | RNF-07 | Interfaz web simple, con valores por defecto (intervalo de 5 minutos) y mensajes claros. | ADR-001, ADR-002 |
 | RNF-08 | El respaldo lo hace el agente de Acronis sobre las bases SQL sin modificarlas; se comprueba con simulacros. | ADR-001 |
 

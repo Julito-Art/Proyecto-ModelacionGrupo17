@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Entregable** | Punto 1 de la consigna (Parcial 3) |
-| **Estado** | Versión final – 30/10/2026 |
+| **Estado** | Versión final, corregida según la devolución – 04/11/2026 |
 | **Sistema** | Sistema de Gestión de Respaldos de Prometva (**SGR**) |
 | **Documento base** | [00 – Documento maestro](00-documento-maestro.md) (nombres, reglas y glosario vinculantes) |
 | **Fuente del diagrama** | [`01-jerarquia.puml`](../diagramas/01-jerarquia.puml) |
@@ -33,7 +33,7 @@ Para la Dirección y el personal de Prometva (pyme de ingeniería, fabricación 
 | **E1 Respaldo automatizado en la nube** | Copiar de forma automática y verificada las bases de datos de Strumis y Tango a Acronis Cloud. | F1.1 Conexión y configuración de respaldos<br>F1.2 Ejecución automática y a demanda<br>F1.3 Verificación de integridad | Alcance del mandato (subir los datos del servidor privado a la nube, de forma automatizada, en tiempos muy cortos); Flujograma de Soluciones: Solución 1 (Acronis Cloud → Respaldo Automatizado); Solución Elegida; Backup Empresarial (características técnicas). |
 | **E2 Monitoreo y alertas** | Dar visibilidad del estado de los respaldos y avisar a tiempo cuando algo falla o se atrasa. | F2.1 Panel e historial de respaldos<br>F2.2 Alertas y notificaciones | Diagnóstico (garantizar seguridad y confiabilidad ante cualquier situación); Backup Empresarial (gestión centralizada: panel web para monitorear tareas); Resultado esperado. |
 | **E3 Restauración de datos** | Poder recuperar los datos de forma controlada tras una falla o un ataque, y comprobar que la recuperación funciona. | F3.1 Solicitud y autorización de restauración<br>F3.2 Ejecución y prueba de restauración | Relevamiento (hackeo del servidor y pago de un monto elevado para recuperar los datos); Estudio Preliminar (percance sufrido); Backup Empresarial (recuperación granular o total). |
-| **E4 Seguridad, auditoría e informes** | Controlar quién accede a qué, dejar registro de lo que ocurre y rendir cuentas a Dirección. | F4.1 Acceso y usuarios<br>F4.2 Auditoría e informes | Estudio Preliminar (Tango: acceso solo de la administración y Dirección); Mandato – Límite (no alterar el flujo actual); Resultado esperado (confiabilidad y privacidad); Organigrama (roles). |
+| **E4 Seguridad, auditoría e informes** | Controlar quién accede a qué, dejar registro de lo que ocurre y rendir cuentas a Dirección. | F4.1 Acceso y usuarios<br>F4.2 Auditoría e informes | Estudio Preliminar (Tango: acceso solo de la administración y Dirección); Relevamiento (ataque sufrido sobre el servidor privado: hace falta saber quién hizo qué y cuándo); Resultado esperado (aumenta la confiabilidad y la privacidad de los datos); Organigrama (roles de Dirección y de Administración). |
 
 ## 4. Historias de usuario
 
@@ -69,7 +69,7 @@ Todas con formato *Como / quiero / para*, prioridad MoSCoW y estimación en stor
 **HU-004 – Ejecutar respaldos automáticos según la política** · Must · 8 SP · Sprint 2
 
 - Como **Responsable de Respaldos** quiero que los respaldos de STRUMIS y TANGO se ejecuten automáticamente según la política de cada servidor para no depender de copias manuales ni de que alguien se acuerde de hacerlas.
-- **Criterio verificable (resumen):** Con una política de 5 minutos, entre dos ejecuciones del mismo servidor pasan 5 minutos ±1; el primer respaldo de cada servidor es COMPLETO y los siguientes INCREMENTAL (cada intervalo) o DIFERENCIAL (uno por día); cada ejecución genera una tarea con estado, tipo y disparador PROGRAMADO; STRUMIS y TANGO se respaldan de forma independiente; si llega un ciclo y el servidor aún tiene un respaldo en curso, ese ciclo se omite y se registra.
+- **Criterio verificable (resumen):** Con una política de 5 minutos, entre dos ejecuciones del mismo servidor pasan 5 minutos ±1; el primer respaldo de cada servidor es COMPLETO y los siguientes INCREMENTAL (cada intervalo) o DIFERENCIAL (uno por día); cada ejecución genera una tarea con estado, tipo y disparador PROGRAMADO; STRUMIS y TANGO se respaldan de forma independiente; si llega un ciclo y el servidor aún tiene un respaldo en curso, ese ciclo se omite y se registra; un servidor sin política no se respalda. Incluye un **panel mínimo** con el estado de la tarea de cada servidor y su detalle (el panel completo es HU-009).
 - **Depende de:** HU-002, HU-003
 - **Origen en OAS:** Alcance del mandato (de forma automatizada); Diagnóstico (que no se tenga que hacer manualmente); Flujograma de Soluciones (Respaldo Automatizado).
 
@@ -90,7 +90,7 @@ Todas con formato *Como / quiero / para*, prioridad MoSCoW y estimación en stor
 **HU-007 – Encolar respaldos cuando no hay conexión a Internet** · Should · 5 SP · Sprint 3
 
 - Como **Responsable de Respaldos** quiero que los respaldos pendientes de STRUMIS y TANGO se conserven cuando se corta Internet y se envíen al recuperarse la conexión para no dejar huecos en la cobertura de datos.
-- **Criterio verificable (resumen):** Sin conexión la tarea queda EN_COLA sin consumir reintentos y no se pierde; al volver la conexión se envía en orden cronológico; el panel indica que hay tareas en cola.
+- **Criterio verificable (resumen):** Sin conexión la tarea queda EN_COLA sin consumir reintentos y no se pierde; al volver la conexión se envía en orden cronológico (si el respaldo ya estaba en la nube, solo se repite la validación); el panel mínimo de HU-004 muestra la tarea como «En cola».
 - **Depende de:** HU-004
 - **Origen en OAS:** Backup Empresarial (requisito: conexión a Internet estable).
 
@@ -110,7 +110,7 @@ Todas con formato *Como / quiero / para*, prioridad MoSCoW y estimación en stor
 **HU-009 – Consultar el estado de los respaldos en un panel** · Must · 5 SP · Sprint 4
 
 - Como **Responsable de Respaldos** quiero ver en un panel el estado de los respaldos de STRUMIS y TANGO (último exitoso, próximo programado, tarea en curso y alertas abiertas) para detectar rápido si algo no está funcionando.
-- **Criterio verificable (resumen):** El panel muestra por servidor la antigüedad del último respaldo exitoso; se marca en amarillo si supera 10 minutos y en rojo si supera 15; lista las alertas ABIERTAS; se actualiza al menos cada 60 segundos; Dirección ve el mismo panel en solo lectura, sin botones de acción.
+- **Criterio verificable (resumen):** Completa el panel mínimo de HU-004. El panel muestra por servidor la antigüedad del último respaldo exitoso; se marca en amarillo si supera 10 minutos y en rojo si supera 15; lista las alertas ABIERTAS; se actualiza al menos cada 60 segundos; Dirección ve el mismo panel en solo lectura, sin botones de acción.
 - **Depende de:** HU-004
 - **Origen en OAS:** Backup Empresarial (gestión centralizada: panel web para monitorear tareas).
 
@@ -165,7 +165,7 @@ Todas con formato *Como / quiero / para*, prioridad MoSCoW y estimación en stor
 **HU-015 – Autorizar o rechazar una solicitud de restauración** · Must · 3 SP · Sprint 4
 
 - Como **Dirección** quiero autorizar o rechazar las solicitudes de restauración para controlar que no se sobrescriban datos de producción sin mi aval.
-- **Criterio verificable (resumen):** Solo Dirección puede resolver; al rechazar se exige un motivo; la solicitud pasa a AUTORIZADA o RECHAZADA y se notifica al Responsable; una solicitud ya resuelta no puede resolverse de nuevo.
+- **Criterio verificable (resumen):** Solo Dirección puede resolver; al rechazar se exige un motivo; la solicitud pasa a AUTORIZADA o RECHAZADA y se avisa al solicitante por correo (y se ve en el SGR); una solicitud ya resuelta no puede resolverse de nuevo.
 - **Depende de:** HU-014
 - **Origen en OAS:** Estudio Preliminar (datos críticos solo accesibles a Dirección y administración); Resultado esperado (confiabilidad y privacidad).
 
@@ -174,7 +174,7 @@ Todas con formato *Como / quiero / para*, prioridad MoSCoW y estimación en stor
 **HU-016 – Ejecutar una restauración autorizada** · Must · 8 SP · Sprint 5
 
 - Como **Responsable de Respaldos** quiero ejecutar una restauración autorizada y ver su progreso y resultado para recuperar la operación de la empresa tras una pérdida de datos.
-- **Criterio verificable (resumen):** Solo se ejecutan solicitudes AUTORIZADA; antes de sobrescribir producción se ejecuta un respaldo previo a restauración del estado actual (disparador PREVIO_A_RESTAURACION); al terminar la solicitud queda COMPLETADA, o FALLIDA con alerta CRITICA.
+- **Criterio verificable (resumen):** Solo se ejecutan solicitudes AUTORIZADA; antes de sobrescribir producción se ejecuta un respaldo previo a restauración del estado actual (disparador PREVIO_A_RESTAURACION); al terminar la solicitud queda COMPLETADA, o FALLIDA con alerta CRITICA de tipo RESTAURACION_FALLIDA; si el respaldo previo falla, no se toca producción.
 - **Depende de:** HU-015
 - **Origen en OAS:** Relevamiento (consecuencias de perder los datos); Backup Empresarial (recuperación total o granular desde la nube).
 
@@ -192,8 +192,8 @@ Todas con formato *Como / quiero / para*, prioridad MoSCoW y estimación en stor
 **HU-018 – Autenticarse y acceder según el rol** · Must · 5 SP · Sprint 1
 
 - Como **Usuario del SGR** quiero iniciar sesión con mi usuario y contraseña y ver solo las funciones de mi rol (Responsable de Respaldos, Dirección o Gerente de Administración) para que los datos de respaldo sean accesibles solo para quienes corresponde.
-- **Criterio verificable (resumen):** Credenciales inválidas muestran un error genérico que no indica si falló el usuario o la contraseña; 5 intentos fallidos bloquean la cuenta 15 minutos; la contraseña tiene al menos 12 caracteres; tras iniciar sesión solo se muestran las funciones del rol del usuario.
-- **Depende de:** —
+- **Criterio verificable (resumen):** Después de la carga inicial (tarea técnica T-02) existe un usuario de cada rol y cada uno puede iniciar sesión; credenciales inválidas muestran un error genérico que no indica si falló el usuario o la contraseña; 5 intentos fallidos bloquean la cuenta 15 minutos; la contraseña tiene al menos 12 caracteres; tras iniciar sesión solo se muestran las funciones del rol del usuario.
+- **Depende de:** T-02 (carga inicial de usuarios; tarea técnica, no HU)
 - **Origen en OAS:** Estudio Preliminar (acceso a Tango restringido); Resultado esperado (privacidad).
 
 **HU-019 – Gestionar usuarios y roles** · Should · 3 SP · Sprint 6
@@ -228,17 +228,17 @@ Todas con formato *Como / quiero / para*, prioridad MoSCoW y estimación en stor
 
 ## 5. Tabla resumen y chequeo INVEST
 
-Convenciones: ✔ cumple; **~** cumple con reservas. **I** y **S** salen de datos (dependencias y puntos: S es «~» con 8 SP); **T** exige un criterio verificable. **N**, **V** y **E** son juicio de los autores: la columna *Observación* justifica lo que no es obvio. El grupo debe revisar esta autoevaluación.
+Convenciones: ✔ cumple; **~** cumple con reservas. **I** y **S** salen de datos (dependencias y puntos: S es «~» con 8 SP); **T** exige un criterio verificable. **N**, **V** y **E** son juicio de los autores: la columna *Observación* justifica lo que no es obvio.
 
 | HU | Título | MoSCoW | SP | Sprint | I | N | V | E | S | T | Observación |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | HU-001 | Registrar los servidores de origen | Must | 3 | 1 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | I: depende de HU-018. S: formulario simple. La instalación del agente en cada servidor es una tarea técnica previa, no una HU. |
 | HU-002 | Conectar el sistema con Acronis Cloud | Must | 5 | 2 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | V: sin conexión no hay respaldo en la nube. E: 5 SP por tratarse de una integración externa (adaptador). |
 | HU-003 | Definir la política de respaldo de cada servidor | Must | 5 | 1 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | N: los valores por defecto son negociables. T: rango y aviso verificables. Elegida para el punto 8. |
-| HU-004 | Ejecutar respaldos automáticos según la política | Must | 8 | 2 | ~ | ✔ | ✔ | ✔ | ~ | ✔ | S: 8 SP, en el límite; si en el Sprint 2 se desborda, dividir en (a) planificador y (b) ejecución con estrategias. V: elimina el trabajo manual. Redactada como comportamiento del sistema; el beneficiario es el Responsable. Elegida para el punto 8. |
+| HU-004 | Ejecutar respaldos automáticos según la política | Must | 8 | 2 | ~ | ✔ | ✔ | ✔ | ~ | ✔ | S: 8 SP, el tope de la escala. No se divide ahora porque sus partes, (a) planificador y (b) ejecución con estrategias, no entregan valor por separado: (a) sin (b) no respalda nada y (b) sin (a) no es automático. Se mantiene la regla RF-nn = HU-0nn. Si en el Sprint 2 se desborda, se divide en esas dos. I: el panel que usa es su propio panel mínimo, no el de HU-009; el cierre de alertas lo agrega HU-011 (Sprint 3). Elegida para el punto 8. |
 | HU-005 | Reintentar automáticamente un respaldo fallido | Must | 3 | 2 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | V: evita alertas por fallas pasajeras. Redactada como comportamiento del sistema. |
 | HU-006 | Lanzar un respaldo manual a demanda | Should | 3 | 2 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | I: depende de HU-004 y HU-023. |
-| HU-007 | Encolar respaldos cuando no hay conexión a Internet | Should | 5 | 3 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | V: evita huecos de cobertura. Redactada como comportamiento del sistema. |
+| HU-007 | Encolar respaldos cuando no hay conexión a Internet | Should | 5 | 3 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | V: evita huecos de cobertura. I: muestra la cola en el panel mínimo de HU-004, no depende de HU-009. Redactada como comportamiento del sistema. |
 | HU-008 | Verificar la integridad de cada respaldo | Must | 5 | 3 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | T: depende de la validación que ofrece Acronis (SM-13), a confirmar con la documentación del producto. |
 | HU-009 | Consultar el estado de los respaldos en un panel | Must | 5 | 4 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | N: los umbrales de color son ajustables. Dirección accede en solo lectura (RN-16). |
 | HU-010 | Consultar el historial de respaldos con filtros | Should | 3 | 4 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | S: 3 SP. |
@@ -247,9 +247,9 @@ Convenciones: ✔ cumple; **~** cumple con reservas. **I** y **S** salen de dato
 | HU-013 | Notificar a Dirección las alertas críticas | Should | 2 | 4 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | I: depende de HU-011 y HU-012. V: implementa RN-09, por eso es Should. |
 | HU-014 | Solicitar una restauración | Must | 5 | 4 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | Elegida para el punto 8. |
 | HU-015 | Autorizar o rechazar una solicitud de restauración | Must | 3 | 4 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | V: control de Dirección sobre la restauración (RN-10). |
-| HU-016 | Ejecutar una restauración autorizada | Must | 8 | 5 | ~ | ✔ | ✔ | ✔ | ~ | ✔ | S: 8 SP, en el límite; candidata a dividir (respaldo previo / restauración). I: cadena HU-014 → HU-015 → HU-016. |
+| HU-016 | Ejecutar una restauración autorizada | Must | 8 | 5 | ~ | ✔ | ✔ | ✔ | ~ | ✔ | S: 8 SP, el tope de la escala. No se divide porque el respaldo previo (RN-11) sin la restauración no tiene valor propio y la restauración sin el respaldo previo violaría RN-11. Si en el Sprint 5 se desborda, se divide en (a) respaldo previo y (b) restauración y alerta. I: cadena HU-014 → HU-015 → HU-016. |
 | HU-017 | Realizar un simulacro de restauración | Should | 5 | 5 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | I: depende de HU-016; reutiliza la restauración, pero sin autorización y sin tocar producción. |
-| HU-018 | Autenticarse y acceder según el rol | Must | 5 | 1 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | S: 5 SP; solo login, bloqueo y vista por rol (los permisos finos están en cada HU). Rol: actor general que agrupa a los tres roles. |
+| HU-018 | Autenticarse y acceder según el rol | Must | 5 | 1 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | S: 5 SP; solo login, bloqueo y vista por rol (los permisos finos están en cada HU). I: los usuarios iniciales los crea la tarea técnica T-02, no HU-019. Rol: actor general que agrupa a los tres roles. |
 | HU-019 | Gestionar usuarios y roles | Should | 3 | 6 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | I: depende de HU-018 y HU-023. |
 | HU-020 | Consultar el registro de auditoría | Should | 3 | 5 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | I: depende de HU-023 (que genera los registros); esta HU solo los consulta. |
 | HU-021 | Generar el informe mensual de respaldos | Could | 3 | 6 | ~ | ✔ | ✔ | ✔ | ✔ | ✔ | V: rendición de cuentas a Dirección; es Could. |
@@ -264,7 +264,8 @@ Las dependencias (**I = ~**) son inevitables en un flujo de respaldo → restaur
 - Desarrollar un software propio de respaldo o implantar un NAS: son las soluciones 2 y 3 del trabajo de OAS, descartadas (alternativas del ADR-001).
 - Respaldar archivos que no sean las bases de datos de Strumis y Tango (por ejemplo, planos de Sipe 3D o documentos sueltos).
 - Respaldo continuo en milisegundos: el objetivo es un intervalo de 5 a 10 minutos.
-- **Tarea técnica previa (no es una HU):** instalar el agente de Acronis en cada uno de los dos servidores; es precondición de HU-001.
+- **Tarea técnica previa T-01 (no es una HU):** instalar el agente de Acronis en cada uno de los dos servidores; es precondición de HU-001.
+- **Tarea técnica previa T-02 (no es una HU):** carga inicial de usuarios al instalar el SGR: un usuario por rol (Dirección, Responsable de Respaldos y Gerente de Administración), con su correo y una contraseña inicial de al menos 12 caracteres que se entrega a cada persona. Es precondición de HU-018; a partir del Sprint 6, Dirección administra los usuarios con HU-019.
 
 ## 7. Definiciones de equipo
 

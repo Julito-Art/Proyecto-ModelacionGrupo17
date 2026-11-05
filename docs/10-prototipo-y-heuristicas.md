@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Entregable** | Punto 10 de la consigna (Parcial 3) |
-| **Estado** | Versión final – 30/10/2026 |
+| **Estado** | Versión final, corregida según la devolución – 04/11/2026 |
 | **Base** | Historias de [`docs/historias/`](historias/) y [06 – Diseño de clases](06-diseno-de-clases.md) |
 | **Capturas** | Carpeta [`prototipo/`](../prototipo/) (imágenes `.png`) |
 | **Fuentes del prototipo** | [`prototipo/fuentes/`](../prototipo/fuentes/) (archivos `.puml` de PlantUML Salt) |
@@ -140,7 +140,7 @@ Las severidades con flecha indican el valor **antes → después** de la correcc
 | N2 – Correspondencia entre el sistema y el mundo real | Pantalla 2 | No cumplía → cumple | Marca (1): el asunto dice «[SGR] CRITICA: el respaldo de TANGO falló»; antes decía solo «Alerta #A-17». | 3 → 0 |
 | N9 – Ayudar a reconocer, diagnosticar y recuperarse de los errores | Pantalla 2 | No cumplía → cumple | Marca (2): el correo indica el motivo y qué hacer; antes solo decía «Se generó una alerta». | 3 → 0 |
 | N1 – Visibilidad del estado del sistema | Pantalla 3 | Cumple | Marca (3): si el correo falla, el panel lo avisa y aclara que la alerta sigue ABIERTA. | 0 |
-| N4 – Consistencia y estándares | Pantalla 1 | Cumple | Marca (4): la severidad se muestra con texto («CRITICA») además del color. | 0 |
+| N4 – Consistencia y estándares | Pantallas 1, 2 y 3 | Cumple | Marca (4): la severidad se nombra igual («CRITICA», en rojo) en el panel, en el asunto del correo y en el aviso de correo fallido, y las dos vistas del panel de alertas (pantallas 1 y 3) tienen las mismas columnas en el mismo orden (Severidad, Tipo, Servidor, Desde, Estado y Motivo). El usuario no tiene que aprender dos formas de leer la misma alerta. | 0 |
 
 Las severidades con flecha indican el valor **antes → después** de la corrección.
 
@@ -180,7 +180,7 @@ Las severidades con flecha indican el valor **antes → después** de la correcc
 
 | Regla | Pantalla | ¿Cumple? | Evidencia (marca señalada en la captura) | Severidad |
 |---|---|---|---|---|
-| N5 – Prevención de errores | Pantalla 1 | No cumplía → cumple | Marca (1): solo se ofrecen puntos vigentes y hay un resumen antes de enviar; antes se listaban también los vencidos. | 3 → 0 |
+| N5 – Prevención de errores | Pantalla 1 | No cumplía → cumple | Marcas (1): solo se ofrecen puntos vigentes y dentro del rango y del filtro elegidos (con «Solo diarios» marcado, solo diferenciales del 19/10 al 26/10), y antes del botón de envío hay un resumen de lo que se va a pedir (servidor, tipo y punto). Antes se listaban también los vencidos y se enviaba sin resumen. | 3 → 0 |
 | N9 – Ayudar a reconocer, diagnosticar y recuperarse de los errores | Pantalla 2 | Cumple | Marca (2): cada mensaje de error está junto al campo y dice cómo resolverlo. | 0 |
 | N1 – Visibilidad del estado del sistema | Pantalla 3 | Cumple | Marca (3): se confirma que la solicitud quedó PENDIENTE de autorización y con qué número. | 0 |
 | N6 – Reconocer en lugar de recordar | Pantalla 1 | No cumple | Marca (4): para una restauración granular hay que escribir los elementos de memoria; no hay una lista para elegir. | 2 |
@@ -191,7 +191,7 @@ Las severidades con flecha indican el valor **antes → después** de la correcc
 
 **Problema encontrado:** La lista incluía puntos vencidos (hace 31 días) y se enviaba sin resumen ni indicación de vigencia.
 
-**Corrección:** Solo puntos vigentes, aclaración de la retención de la política (30 días por defecto) y confirmación posterior del estado PENDIENTE.
+**Corrección:** Solo puntos vigentes que respetan el rango de fechas y el filtro «Solo diarios», aclaración de la retención de la política (30 días por defecto), resumen antes de enviar y confirmación posterior del estado PENDIENTE.
 
 | Antes | Después |
 |---|---|

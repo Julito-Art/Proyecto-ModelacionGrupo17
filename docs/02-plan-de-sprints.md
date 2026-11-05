@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Entregable** | Punto 2 de la consigna (Parcial 3) |
-| **Estado** | Borrador v2 – 24/10/2026 |
+| **Estado** | Versión final, corregida según la devolución – 04/11/2026 |
 | **Backlog de origen** | [01 – Visión y backlog](01-vision-y-backlog.md) |
 
 ## 1. Duración y capacidad
@@ -11,8 +11,8 @@
 - **Duración del sprint:** 2 semanas (10 días hábiles). Es lo bastante corta para recibir feedback y lo bastante larga para cerrar HU de 3 a 8 puntos.
 - **Equipo supuesto:** 4 integrantes con dedicación parcial (estudiantes).
 - **Capacidad supuesta:** **20 story points por sprint** = 4 personas × 5 SP por persona y sprint.
-- **Criterio:** se calcula para una dedicación de unas 10 horas semanales por persona, tomando como referencia que 1 SP equivale a medio día de trabajo de una persona. Como no hay historial de velocidad, el valor es una **suposición a recalibrar** después del Sprint 1. Ningún sprint se carga al 100 % para dejar margen a reuniones y retrabajo (la carga va de 16 a 19 puntos, salvo el sprint de cierre).
-- **Receso:** no se agenda ningún sprint entre el 21/12/2026 y el 01/01/2027 (fiestas de fin de año).
+- **Criterio:** se calcula desde lo que puede hacer el equipo y no desde una fecha de entrega: unas 10 horas semanales por persona (20 horas por sprint), tomando como referencia que 1 SP equivale a medio día de trabajo (unas 4 horas) de una persona. 20 horas ÷ 4 horas = 5 SP por persona y sprint. Como no hay historial de velocidad, el valor es una **suposición a recalibrar** después del Sprint 1. Ningún sprint se carga al 100 % para dejar margen a reuniones y retrabajo (la carga va de 16 a 19 puntos, salvo el sprint de cierre).
+- **Receso:** no se agenda ningún sprint entre el 21/12/2026 y el 03/01/2027 (fiestas de fin de año).
 - **Regla de planificación:** ningún sprint supera la capacidad; las dependencias se respetan (una HU nunca va antes de lo que necesita).
 
 ## 2. Escala de estimación
@@ -138,6 +138,17 @@ Puntos del sprint: **8** de 20 (holgura 12).
 | HU-021 | 6 | HU-010 (S4) | Sí |
 | HU-022 | 6 | HU-009 (S4), HU-018 (S1) | Sí |
 
+**Dependencias que no son entre historias.** También se verificaron las dependencias con tareas técnicas y con piezas compartidas:
+
+| HU | Sprint | Necesita | ¿Se respeta? |
+|---|---|---|---|
+| HU-001 | 1 | T-01: agente de Acronis instalado en cada servidor | Sí: T-01 se hace antes del Sprint 1 |
+| HU-018 | 1 | T-02: carga inicial de un usuario por rol (no HU-019) | Sí: T-02 se hace antes del Sprint 1 |
+| HU-004 | 2 | Un panel donde ver la tarea | Sí: HU-004 incluye su propio panel mínimo; HU-009 (Sprint 4) lo completa |
+| HU-007 | 3 | Mostrar la tarea «En cola» | Sí: usa el panel mínimo de HU-004 (Sprint 2) |
+| HU-004 | 2 | Cerrar las alertas abiertas tras un respaldo exitoso | Sí: en el Sprint 2 todavía no existen alertas; `GestorDeAlertas.cerrarAlertas` se agrega con HU-011 (Sprint 3), igual que la validación real de Acronis llega con HU-008 |
+| HU-011 | 3 | Ver la alerta | Sí: HU-011 incluye la lista mínima de alertas abiertas |
+
 Dentro de un mismo sprint, el orden de la tabla del punto 4 es el orden de trabajo, de modo que cada HU se hace después de la que necesita. Las HU sin dependencias declaradas (HU-018) son las primeras del Sprint 1; todas las demás funciones requieren iniciar sesión, por lo que HU-018 va primero.
 
 ## 6. Hitos de producto
@@ -170,7 +181,7 @@ Las seis iteraciones del campo **Sprint**:
 
 Entre el Sprint 3 y el Sprint 4 hay un receso de dos semanas (21/12/2026 al 03/01/2027): en el campo Sprint se carga como un *break* entre iteraciones.
 
-Las épicas, features e historias se cargan como issues con las etiquetas `épica`, `feature` e `historia`, enlazadas como sub-issues (feature dentro de épica, historia dentro de feature). La creación de etiquetas e issues se puede automatizar con el script que acompaña este trabajo; el detalle está en `_interno/guia-github.md`. Los valores de Sprint, Puntos y Prioridad de cada HU son los de las secciones 3 y 4 de este documento y los del backlog.
+Las épicas, features e historias se cargan como issues con las etiquetas `épica`, `feature` e `historia`, enlazadas como sub-issues (feature dentro de épica, historia dentro de feature). Las 23 historias de usuario, incluida HU-001, son issues de tipo historia. Cada una tiene en el Board la iteración del campo Sprint que le asigna este plan, y los valores de Sprint, Puntos y Prioridad coinciden con las secciones 3 y 4 de este documento y con el backlog. Ninguna issue figura como terminada: el SGR no está implementado.
 
 ## 8. Riesgos y supuestos del plan
 
