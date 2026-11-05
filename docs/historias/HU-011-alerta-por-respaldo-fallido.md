@@ -45,7 +45,7 @@ Como **Responsable de Respaldos** quiero recibir una alerta por correo y en el p
 
 - **Dado** que el servicio de correo no responde
 - **Cuando** se genera la alerta de CA-1
-- **Entonces** la alerta queda igualmente ABIERTA y visible en el panel, con el aviso «No se pudo enviar el correo»; la alerta queda marcada con `correoEnviado` = falso y el motivo del fallo del envío
+- **Entonces** la alerta queda igualmente ABIERTA y visible en el panel, con el aviso «No se pudo enviar el correo»; la alerta queda marcada con `correoEnviado` = falso y con el motivo del fallo del envío guardado en `motivoFalloCorreo`
 
 **CA-4 – Cierre de la alerta** · _camino normal_
 
@@ -57,13 +57,19 @@ Como **Responsable de Respaldos** quiero recibir una alerta por correo y en el p
 
 - **Dado** una alerta de tipo FALLA de TANGO que ya está ABIERTA
 - **Cuando** otro respaldo de TANGO vuelve a quedar FALLIDA
-- **Entonces** no se crea otra alerta: sigue habiendo una sola ABIERTA para ese servidor y tipo
+- **Entonces** no se crea otra alerta: sigue habiendo una sola ABIERTA para ese servidor y tipo, que actualiza su motivo y su hora con los de la nueva falla; no se reenvía el correo ni se registra otra ALERTA_GENERADA
 
 **CA-6 – La alerta queda auditada** · _camino normal_
 
 - **Dado** una alerta generada
 - **Cuando** se crea
-- **Entonces** se registra ALERTA_GENERADA en la auditoría con el servidor y la severidad
+- **Entonces** se registra ALERTA_GENERADA en la auditoría con el usuario «SGR», la fecha y hora, el servidor y la severidad
+
+**CA-7 – Las alertas son por servidor** · _camino normal_
+
+- **Dado** una alerta de tipo FALLA de TANGO ABIERTA
+- **Cuando** un respaldo de STRUMIS queda FALLIDA
+- **Entonces** se crea una segunda alerta, de STRUMIS, y quedan dos ABIERTAS (una por servidor); la de TANGO no cambia
 
 ## Qué queda fuera de esta historia
 
@@ -76,8 +82,8 @@ Como **Responsable de Respaldos** quiero recibir una alerta por correo y en el p
 
 **Clases del diseño (documento 06) que toca:**
 
-- `GestorDeAlertas`: `alertarFalla(tarea, ahora)`, `cerrarAlertas(servidor, ahora)` y `alertasAbiertas()`.
-- `Alerta`: constructor, `cerrar(ahora)`, `estado()`, `tipo()`, `servidor()` y `destinatarios()`; para CA-3, el atributo `correoEnviado` con `marcarCorreoEnviado()`, `marcarCorreoFallido(motivo)` y `correoEnviado()`; enumeraciones `TipoDeAlerta`, `Severidad` y `EstadoAlerta`.
+- `GestorDeAlertas`: `alertarFalla(tarea, ahora)`, `cerrarAlertas(servidor, ahora)` y `alertasAbiertas()`; busca la alerta abierta con `IRepositorioDeAlertas.abierta(servidor, tipo)` y la guarda con `guardar(alerta)`.
+- `Alerta`: constructor, `actualizar(mensaje, ahora)` (CA-5), `cerrar(ahora)`, `estado()`, `tipo()`, `servidor()`, `mensaje()` y `destinatarios()`; para CA-3, el atributo `correoEnviado` con `marcarCorreoEnviado()`, `marcarCorreoFallido(motivo)` y `correoEnviado()`; enumeraciones `TipoDeAlerta`, `Severidad` y `EstadoAlerta`.
 - `INotificador.notificar(alerta, roles)` y `NotificadorPorCorreo` (puerto y adaptador de correo). Si el envío falla, `notificar` lanza `NotificacionException`; `GestorDeAlertas.alertarFalla` la captura, llama a `Alerta.marcarCorreoFallido(motivo)` y deja la alerta ABIERTA y visible en el panel.
 - `TareaDeRespaldo` (`estado()`, `motivoFallo()`), `PlanificadorDeRespaldos.procesarResultado` y `ServicioDeAuditoria.registrar`.
 
@@ -93,19 +99,22 @@ Esta historia usa el **Singleton**: es el `PlanificadorDeRespaldos` (la única i
 
 | Criterio | Datos de prueba |
 |---|---|
-| CA-1 | Reloj simulado 26/10/2026. Tarea de TANGO pasa a FALLIDA a las 14:07:00. Alerta creada a las 14:07:02. Correo enviado a las 14:07:30 (28 segundos: cumple). Destinatario: resp.prueba@prometva.test. Asunto esperado: «[SGR] CRITICA: el respaldo de TANGO falló». |
+| CA-1 | Reloj simulado 26/10/2026. Tarea de TANGO pasa a FALLIDA a las 14:07:00. Alerta creada a las 14:07:02. Correo enviado a las 14:07:30 (28 segundos: cumple). Bordes del «menos de 1 minuto»: envío a los 59 segundos cumple; a los 60 y a los 61, no. Destinatario: resp.prueba@prometva.test. Asunto esperado: «[SGR] CRITICA: el respaldo de TANGO falló». |
 | CA-2 | Acronis simulado falla en el intento 1 de STRUMIS y responde «exitoso» e «íntegro» en el reintento 1. Esperado: 0 alertas. |
-| CA-3 | Servidor de correo de prueba apagado (conexión rechazada). Esperado: 1 alerta ABIERTA; aviso «No se pudo enviar el correo» en el panel. |
+| CA-3 | Servidor de correo de prueba apagado (conexión rechazada). Esperado: 1 alerta ABIERTA; aviso «No se pudo enviar el correo» en el panel; `correoEnviado` = falso y `motivoFalloCorreo` = «Conexión rechazada por el servidor de correo». |
 | CA-4 | Alerta ABIERTA de TANGO; respaldo exitoso de TANGO a las 14:12. Esperado: estado CERRADA y fecha de cierre 14:12. |
-| CA-5 | Alerta FALLA de TANGO ABIERTA; segunda tarea de TANGO FALLIDA a las 14:20. Esperado: 1 alerta ABIERTA (no 2). |
-| CA-6 | Alerta de CA-1. Registro esperado: usuario «SGR», acción ALERTA_GENERADA, objetivo TANGO, resultado «CRITICA». |
+| CA-5 | Alerta FALLA de TANGO ABIERTA desde las 14:07 con el motivo «Acronis no respondió: tiempo de espera agotado»; segunda tarea de TANGO FALLIDA a las 14:20 con «Acronis: error de autenticación». Esperado: 1 alerta ABIERTA (no 2), con motivo «Acronis: error de autenticación» y actualizada 14:20; 0 correos nuevos y 0 registros ALERTA_GENERADA nuevos. |
+| CA-6 | Alerta de CA-1. Registro esperado: usuario «SGR», acción ALERTA_GENERADA, objetivo TANGO, resultado «CRITICA», fecha y hora 26/10/2026 14:07:02. |
+| CA-7 | Alerta FALLA de TANGO ABIERTA; tarea de STRUMIS FALLIDA a las 14:25. Esperado: 2 alertas ABIERTAS (TANGO y STRUMIS). |
 
 ## Decisiones de implementación
 
 - **Dónde se ve la alerta en el Sprint 3:** esta historia incluye el panel de alertas mínimo (la lista de alertas abiertas, pantalla 1 del documento 10); el panel completo de estado es la HU-009. Por eso HU-011 no depende de HU-009.
 - **Dónde se guarda el motivo del fallo del correo:** en la propia alerta (`motivoFalloCorreo`), junto a `correoEnviado`.
 - **Correos por rol:** `NotificadorPorCorreo` pide los usuarios activos de cada rol a `IRepositorioDeUsuarios.usuariosActivosConRol(rol)` y envía a sus correos.
-- **Falla repetida con una alerta ya abierta (CA-5):** no se crea otra; se actualizan el motivo y la hora de la alerta y no se vuelve a enviar el correo.
+- **Falla repetida con una alerta ya abierta (CA-5):** no se crea otra; `Alerta.actualizar(mensaje, ahora)` cambia el motivo y la hora, no se vuelve a enviar el correo y no se registra otra ALERTA_GENERADA (la nueva falla ya queda en RESPALDO_FINALIZADO).
+- **Sin Responsable activo:** si `usuariosActivosConRol` no devuelve a nadie, el notificador lanza `NotificacionException` con «No hay usuarios activos con el rol Responsable de Respaldos»; la alerta queda como en CA-3.
+- **Panel de alertas:** lo ven el Responsable de Respaldos y Dirección (esta en solo lectura). Las alertas abiertas se ordenan por severidad (CRITICA primero) y, dentro de cada severidad, de la más reciente a la más antigua. Las columnas son siempre las mismas: Severidad, Tipo, Servidor, Desde, Estado y Motivo. Sin alertas abiertas se muestra «No hay alertas abiertas».
 - **Cierre de alertas:** un respaldo exitoso del servidor cierra sus alertas abiertas de FALLA y de ATRASO (`cerrarAlertas`).
 - **«Menos de 1 minuto» (CA-1):** se mide desde que la alerta se crea hasta que se envía el correo.
 
@@ -117,8 +126,8 @@ Esta historia usa el **Singleton**: es el `PlanificadorDeRespaldos` (la única i
 **Chequeo de Definition of Ready:**
 
 - [x] Tiene rol, acción y beneficio, idénticos a los del backlog ([documento 01](../01-vision-y-backlog.md)).
-- [x] Tiene 6 criterios Dado/Cuando/Entonces y 2 son casos de error.
+- [x] Tiene 7 criterios Dado/Cuando/Entonces y 2 son casos de error.
 - [x] Tiene estimación (5 SP) y prioridad (Must).
 - [x] Sus dependencias están planificadas en sprints anteriores o en el mismo sprint (documento 02).
 - [x] Indica qué queda fuera y los datos de prueba de cada criterio.
-- [ ] Revisada por los cuatro integrantes del grupo.
+- [x] Revisada por los cuatro integrantes del grupo.
