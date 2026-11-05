@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Entregable** | Punto 9 de la consigna (Parcial 3) |
-| **Estado** | Versión final – 30/10/2026 |
+| **Estado** | Versión final, corregida según la devolución – 04/11/2026 |
 | **Casos de prueba** | [HU-003](casos-HU-003.md), [HU-004](casos-HU-004.md), [HU-011](casos-HU-011.md) y [HU-014](casos-HU-014.md) |
 | **Base** | [00 – Documento maestro](../00-documento-maestro.md), [04 – RNF](../04-rnf-y-arquitectura.md) y las historias de [`docs/historias/`](../historias/) |
 
@@ -13,7 +13,7 @@
 
 **Se prueba:**
 - Las cuatro historias del punto 8 (HU-003, HU-004, HU-011 y HU-014), con casos para cada criterio de aceptación.
-- Las reglas de negocio que esas historias aplican (RN-03, 04, 05, 06, 08, 10, 12, 13 y 16) y los estados de `TareaDeRespaldo`, `Alerta` y `SolicitudDeRestauracion`.
+- Las reglas de negocio que esas historias aplican (RN-03, 04, 05, 06, 07, 08, 10, 12, 13, 16, 17, 19, 20, 21, 22 y 23) y los estados de `TareaDeRespaldo`, `Alerta` y `SolicitudDeRestauracion`.
 - Los requisitos no funcionales RNF-01, RNF-06 y RNF-07 en los casos indicados en la sección 3.
 
 **No se prueba en este plan:**
@@ -33,23 +33,24 @@
 | **E2E** | Flujos completos desde la interfaz web: definir una política, ver una alerta, solicitar una restauración. | Alrededor del 10 al 15 % |
 | **Aceptación del usuario** | Prueba de usabilidad con personas sin conocimientos técnicos (RNF-07). | Del 1 al 5 %: una por criterio de usabilidad |
 
-**Distribución real de los 51 casos diseñados:**
+**Distribución real de los 73 casos diseñados:**
 
-| Nivel | Casos | Porcentaje |
-|---|---|---|
-| Unitario | 19 | 37 % |
-| Integración | 24 | 47 % |
-| E2E | 7 | 14 % |
-| Aceptación | 1 | 2 % |
+| Nivel | HU-003 | HU-004 | HU-011 | HU-014 | Total | Porcentaje |
+|---|---|---|---|---|---|---|
+| Unitario | 7 | 4 | 1 | 12 | 24 | 33 % |
+| Integración | 5 | 10 | 9 | 8 | 32 | 44 % |
+| E2E | 6 | 2 | 2 | 6 | 16 | 22 % |
+| Aceptación | 1 | 0 | 0 | 0 | 1 | 1 % |
 
-**Esta distribución se aparta de la pirámide clásica** (con más pruebas unitarias que de integración) a propósito: la lógica central del SGR (planificador, agente, estrategias, adaptador y estados de la tarea) es colaboración entre clases, así que la mayor parte de los casos son de integración. Las reglas de una sola clase se cubren con casos unitarios y los flujos de pantalla, con pocos casos E2E.
+**Esta distribución se aparta de la pirámide clásica** (con más pruebas unitarias que de integración) a propósito: la lógica central del SGR (planificador, agente, estrategias, adaptador y estados de la tarea) es colaboración entre clases, así que la mayor parte de los casos son de integración. Las reglas de una sola clase se cubren con casos unitarios. Los E2E quedan por encima del objetivo (22 % contra 10 a 15 %) porque varios criterios piden algo que solo se ve en pantalla: el mensaje «junto al campo», que la opción no aparezca en el menú, la confirmación o el cambio de la paginación. Esos casos son cortos y se agregaron para que cada criterio tenga un caso que verifique todo su «Entonces».
 
 ## 3. Pruebas ligadas a los requisitos no funcionales
 
 | RNF | Caso | Qué verifica | Criterio de aprobación |
 |---|---|---|---|
-| **RNF-01** (pérdida máxima de datos) | CP-004-11 | Simula 24 horas con intervalo de 5 minutos y mide cada minuto la antigüedad del último respaldo exitoso | Al menos el 99 % de las mediciones ≤ 10 minutos |
-| **RNF-06** (auditabilidad) | CP-003-10, CP-004-10, CP-011-09 y CP-014-04 | Cada acción relevante de las historias genera su registro de auditoría | El 100 % de esas acciones deja registro con usuario, fecha y hora y resultado |
+| **RNF-01** (pérdida máxima de datos) | CP-004-11 | Simula **30 días** (la ventana de medición de RNF-01: 43.200 mediciones) con intervalo de 5 minutos, un corte de conexión y una falla con reintentos, y mide cada minuto la antigüedad del último respaldo exitoso | Al menos el 99 % de las mediciones ≤ 10 minutos |
+| **RNF-06** (auditabilidad: cobertura) | CP-003-10, CP-004-10, CP-011-09 y CP-014-04 | Cada acción relevante de las historias genera su registro de auditoría | El 100 % de esas acciones deja registro con usuario, fecha y hora exactas (reloj simulado) y resultado |
+| **RNF-06** (auditabilidad: tiempo de consulta) | CP-003-19 | Consulta con filtros sobre 12 meses de registros cargados | Respuesta en 3 segundos o menos |
 | **RNF-07** (usabilidad) | CP-003-11 | Al menos 5 usuarios de prueba definen una política sin ayuda, cronometrando | Al menos el 90 % en 3 minutos o menos (con 5 usuarios, los 5) |
 
 Pruebas previstas para las demás historias: RNF-02 (rechazo de conexiones con TLS inferior a 1.2), RNF-05 (cronometrar un simulacro de restauración) y RNF-08 (comparar las bases restauradas con las originales).
@@ -69,7 +70,7 @@ Pruebas previstas para las demás historias: RNF-02 (rechazo de conexiones con T
 Como todavía no se eligió el lenguaje de implementación, se nombra el tipo de herramienta:
 - Marco de pruebas unitarias del lenguaje elegido (estilo xUnit).
 - **Dobles de prueba** de `IProveedorNube` (Acronis) y de `INotificador` (correo), que permiten simular éxito, error, falta de conexión y demoras.
-- **Reloj simulado**, para probar intervalos, reintentos y vigencias sin esperar.
+- **Reloj simulado**, para probar intervalos, reintentos y vigencias sin esperar: las pruebas invocan `RelojDelSistema.tic(ahora)` una vez por minuto simulado, igual que en producción, y el Singleton recibe los dobles con `configurar(...)`.
 - Servidor SMTP de prueba para verificar los correos.
 - Herramienta de pruebas de navegador para los casos E2E.
 - Planilla de cronometraje para la prueba de usabilidad.
@@ -100,8 +101,10 @@ Como todavía no se eligió el lenguaje de implementación, se nombra el tipo de
 
 | Historia | Criterios | Casos | Archivo |
 |---|---|---|---|
-| HU-003 | 7 | 14 | [casos-HU-003.md](casos-HU-003.md) |
-| HU-004 | 6 | 11 | [casos-HU-004.md](casos-HU-004.md) |
-| HU-011 | 6 | 9 | [casos-HU-011.md](casos-HU-011.md) |
-| HU-014 | 9 | 17 | [casos-HU-014.md](casos-HU-014.md) |
-| **Total** | **28** | **51** | |
+| HU-003 | 8 | 19 | [casos-HU-003.md](casos-HU-003.md) |
+| HU-004 | 9 | 16 | [casos-HU-004.md](casos-HU-004.md) |
+| HU-011 | 7 | 12 | [casos-HU-011.md](casos-HU-011.md) |
+| HU-014 | 14 | 26 | [casos-HU-014.md](casos-HU-014.md) |
+| **Total** | **38** | **73** | |
+
+Los 38 criterios tienen al menos un caso que verifica **todo** su «Entonces».
